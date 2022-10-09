@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
+#include "state_machine.h"
 
 // Baudrate settings are defined in <asm/termbits.h>, which is
 // included by <termios.h>
@@ -100,16 +101,42 @@ int main(int argc, char *argv[])
 
     // Loop for input
     unsigned char buf[BUF_SIZE + 1] = {0}; // +1: Save space for the final '\0' char
+    unsigned char temp[2]; //saves A and C for BCC calculation
 
-    while (STOP == FALSE)
-    {
+    stateMachine_t stateMachine; //creates state machine
+    StateMachine_Init(&stateMachine); //starts state machine
+
+    while (StateMachine_GetState(&stateMachine) != state_stop) {
         // Returns after 5 chars have been input
         int bytes = read(fd, buf, BUF_SIZE);
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
-
         printf(":%s:%d\n", buf, bytes);
-        if (buf[0] == 'z')
-            STOP = TRUE;
+        
+        for(int i=0; i<bytes; i++){ //iterates through every byte of the buf received
+            switch (buf[i]) 
+            {
+            case SET_FLAG: //flag
+                StateMachine_RunIteration(&stateMachine, event_flag);
+                break;
+            case A_TRANSMITTER: //a
+                StateMachine_RunIteration(&stateMachine, event_a);
+                temp[0]=buf(i);
+                break;
+            case C_SSET: //c
+                StateMachine_RunIteration(&stateMachine, event_c);
+                temp[1]=buf(i);
+                break;
+            case temp[0]^temp[1]: //compares byte to A xor C (they are saved in temp)
+                StateMachine_RunIteration(&stateMachine, event_bcc);
+                break;
+            
+            default:
+                StateMachine_RunIteration(&StateMachine, event_any); //any other byte resets the machine
+                break;
+            }
+
+        }
+
     }
 
     // The while() cycle should be changed in order to respect the specifications
