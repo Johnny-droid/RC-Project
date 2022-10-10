@@ -1,39 +1,8 @@
-// Write to serial port in non-canonical mode
-//
-// Modified by: Eduardo Nuno Almeida [enalmeida@fe.up.pt]
-
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <termios.h>
-#include <unistd.h>
-
-// Baudrate settings are defined in <asm/termbits.h>, which is
-// included by <termios.h>
-#define BAUDRATE B38400
-#define _POSIX_SOURCE 1 // POSIX compliant source
-
-#define FALSE 0
-#define TRUE 1
-
-#define BUF_SIZE 256
-
-
-#define SET_FLAG 0x7E
-#define A_TRANSMITTER 0x03
-#define A_RECEIVER 0x01
-#define C_SSET 0x03   // Supervision Set
-#define C_SUA 0x07    // Supervision UA
-
-
-
+#include "../include/write_noncanonical.h"
 
 volatile int STOP = FALSE;
 
-int main(int argc, char *argv[])
+int write_noncanonical(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2
     const char *serialPortName = argv[1];
@@ -102,27 +71,17 @@ int main(int argc, char *argv[])
     // Create string to send
     unsigned char set[10];
 
-    set[0] = SET_FLAG;
+    set[0] = FLAG_SET;
     set[2] = A_TRANSMITTER;
     set[4] = C_SSET;
     set[6] = A_TRANSMITTER ^ C_SSET;
-    set[8] = SET_FLAG;
+    set[8] = FLAG_SET;
 
     for (int i = 0; i < 10; i+=2) {
         printf("%x\n", set[i]);
     }
 
     /*
-    unsigned char buf[BUF_SIZE] = {0};
-
-    for (int i = 0; i < BUF_SIZE; i++)
-    {
-        buf[i] = 'a' + i % 26;
-    }
-    
-
-
-
     // In non-canonical mode, '\n' does not end the writing.
     // Test this condition by placing a '\n' in the middle of the buffer.
     // The whole buffer must be sent even with the '\n'.
