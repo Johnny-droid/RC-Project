@@ -24,7 +24,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
         break;
 
     case state_a:
-        if (byte == C_SSET) { stateMachine->currState = state_c; stateMachine->buf[1] = byte; }
+        if (byte == C_SSET) { stateMachine->currState = state_c; stateMachine->buf[1] = byte; } //this need to be able to receive a C_SUA somehow
         else if (byte == FLAG_SET) {stateMachine->currState = state_flag; }
         else { stateMachine->currState = state_start; }
         break;
