@@ -6,6 +6,7 @@
 
 #include "read_noncanonical.h"
 #include "write_noncanonical.h"
+#include "link_layer.h"
 
 // Application layer main function.
 // Arguments:
