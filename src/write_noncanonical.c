@@ -1,7 +1,5 @@
 #include "../include/write_noncanonical.h"
 
-volatile int STOP = FALSE;
-
 int write_noncanonical(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2

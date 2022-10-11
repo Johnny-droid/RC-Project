@@ -4,7 +4,6 @@
 
 #include "../include/read_noncanonical.h"
 
-volatile int STOP = FALSE;
 
 int read_noncanonical(int argc, char *argv[])
 {

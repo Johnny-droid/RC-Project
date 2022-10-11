@@ -13,6 +13,9 @@
 #include "macros.h"
 #include "state_machine.h"
 
+
 int read_noncanonical(int argc, char *argv[]);
+
+
 
 #endif
