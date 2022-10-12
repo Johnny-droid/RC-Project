@@ -23,6 +23,9 @@
 #define C_RR_1 0x85    // Supervision RR N(1)
 #define C_REJ_0 0x01   // Supervision REJ N(0)
 #define C_REJ_1 0x81   // Supervision REJ N(1)
+#define C_INFO_0 0x00  // Information N(0)
+#define C_INFO_1 0x50  // Information N(1)
+
 
 
 

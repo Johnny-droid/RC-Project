@@ -1,10 +1,13 @@
 #include "../include/state_machine.h"
 
 
-void StateMachine_Init(stateMachine_t * stateMachine) {
+
+void StateMachine_Init(stateMachine_t * stateMachine, unsigned char address_byte, unsigned char ctrl_byte) {
     printf("Init state machine.\n");
     printf("HEY, work!");
     stateMachine->currState = state_start;
+    stateMachine->address_byte = address_byte;
+    stateMachine->ctrl_byte = ctrl_byte;
     printf("Finished Initializing");
 }
 
@@ -14,18 +17,18 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
     switch (stateMachine->currState)
     {
     case state_start:
-        if (byte == FLAG_SET) { stateMachine->currState = state_flag; }
+        if (byte == FLAG) { stateMachine->currState = state_flag; }
         break;
 
     case state_flag:
-        if (byte == A_TRANSMITTER) { stateMachine->currState = state_a; stateMachine->buf[0] = byte; }
-        else if (byte == FLAG_SET) { stateMachine->currState = state_flag; }
+        if (byte == stateMachine->address_byte) { stateMachine->currState = state_a; stateMachine->buf[0] = byte; }
+        else if (byte == FLAG) { stateMachine->currState = state_flag; }
         else { stateMachine->currState = state_start; }
         break;
 
     case state_a:
-        if (byte == C_SSET) { stateMachine->currState = state_c; stateMachine->buf[1] = byte; } //this need to be able to receive a C_SUA somehow
-        else if (byte == FLAG_SET) {stateMachine->currState = state_flag; }
+        if (byte == stateMachine->ctrl_byte) { stateMachine->currState = state_c; stateMachine->buf[1] = byte; } //this need to be able to receive a C_SUA somehow
+        else if (byte == FLAG) {stateMachine->currState = state_flag; }
         else { stateMachine->currState = state_start; }
         break;
 
@@ -36,7 +39,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
         break;
 
     case state_bcc:
-        if (byte == FLAG_SET) {stateMachine->currState = state_stop; }
+        if (byte == FLAG) {stateMachine->currState = state_stop; }
         else { stateMachine->currState = state_start; }
         break;
 

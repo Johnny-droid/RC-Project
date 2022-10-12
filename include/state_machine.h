@@ -17,6 +17,8 @@ typedef enum {
 typedef struct{
     state_t currState;
     unsigned char buf[BUF_SIZE];
+    unsigned char address_byte;
+    unsigned char ctrl_byte;
 } stateMachine_t;
 
 /*
