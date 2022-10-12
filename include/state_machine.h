@@ -21,24 +21,6 @@ typedef struct{
     unsigned char ctrl_byte;
 } stateMachine_t;
 
-/*
-typedef enum {
-    event_flag, //flag_rcv
-    event_a, //a_rcv
-    event_c, //c_rcv
-    event_bcc, //bcc_rcv
-    event_any
-} event_t;
-
-
-typedef struct {
-    state_t currState;
-    event_t event;
-    state_t nextState;
-} stateTransMatrixRow_t;
-*/
-
-
 void StateMachine_Init(stateMachine_t * stateMachine);
 void StateMachine_RunIteration (stateMachine_t * stateMachine, unsigned char byte);
 state_t StateMachine_GetState (stateMachine_t * stateMachine);

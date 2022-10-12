@@ -217,14 +217,9 @@ int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole
         }else{
             return -1;
         }
-        
-
-
         break;
-
         
     case LlRx:
-
         if(ctrl_field == C_SSET || ctrl_field == C_DISC){
             address_byte=A_REC_COMM;
         }else if(ctrl_field==C_SUA || ctrl_field==C_RR_0 || ctrl_field==C_RR_1 || ctrl_field==C_REJ_0 || ctrl_field==C_REJ_1){
@@ -232,7 +227,6 @@ int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole
         }else{
             return -1;
         }
-        
         break;
     
     default:
@@ -248,7 +242,28 @@ int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole
 
     return 1;
 
+}
 
+int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field, int data_size){
+    
+    frame[0] = FLAG;
+    frame[1] = A_TRANS_COMM;
+    frame[2] = ctrl_field;
+    frame[3] = A_TRANS_COMM ^ ctrl_field;
+    frame[4] = data;
+    frame[4+data_size]= A_TRANS_COMM ^ ctrl_field;
+    frame[4+data_size+1]= FLAG;
 
+    
+    
+}
+
+int sendFrame(unsigned char * frame, int fd, int frame_size){
+    int fine;
+    fine=write(fd, frame, frame_size);
+    if (fine<=0){
+        return -1;
+    }
+    return fine;
 }
 
