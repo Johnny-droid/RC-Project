@@ -212,3 +212,53 @@ int llclose(int showStatistics)
 
     return 1;
 }
+
+
+int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole role){
+    unsigned char address_byte;
+    
+    switch (role)
+    {
+    case LlTx:
+        if(ctrl_field == C_SSET || ctrl_field == C_DISC){
+            address_byte=A_TRANS_COMM;
+        }else if(ctrl_field==C_SUA || ctrl_field==C_RR_0 || ctrl_field==C_RR_1 || ctrl_field==C_REJ_0 || ctrl_field==C_REJ_1){
+            address_byte=A_TRANS_ANS;
+        }else{
+            return -1;
+        }
+        
+
+
+        break;
+
+        
+    case LlRx:
+
+        if(ctrl_field == C_SSET || ctrl_field == C_DISC){
+            address_byte=A_REC_COMM;
+        }else if(ctrl_field==C_SUA || ctrl_field==C_RR_0 || ctrl_field==C_RR_1 || ctrl_field==C_REJ_0 || ctrl_field==C_REJ_1){
+            address_byte=A_REC_ANS;
+        }else{
+            return -1;
+        }
+        
+        break;
+    
+    default:
+        return -1;
+        break;
+    }
+
+    frame[0] = FLAG;
+    frame[1] = address_byte;
+    frame[2] = ctrl_field;
+    frame[3] = address_byte ^ ctrl_field;
+    frame[4] = FLAG;
+
+    return 1;
+
+
+
+}
+
