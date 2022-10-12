@@ -48,8 +48,8 @@ int read_noncanonical(int argc, char *argv[])
 
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VTIME] = 10; // Inter-character timer unused
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -74,18 +74,21 @@ int read_noncanonical(int argc, char *argv[])
     unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
 
     stateMachine_t stateMachine; //creates state machine
-    printf("HEEEEEEEEEEEEY");
     StateMachine_Init(&stateMachine); //starts state machine
-    printf("HEy2!");
 
     while (StateMachine_GetState(&stateMachine) != state_stop) {
         // Returns after 5 chars have been input
-        printf("HEy!");
+        printf("Didn't read anything \n");
+        fflush(stdout);
         int bytes = read(fd, buf, 1);   // CHANGE to read one byte at a time
-        printf("Hey!1");
+        if (bytes == 0) continue;
+        printf("Init State: %d\n", StateMachine_GetState(&stateMachine));
+        printf("Byte read:%x \n", buf[0]);
+        fflush(stdout);
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
-        printf(":%s", buf);
+        
         StateMachine_RunIteration(&stateMachine, buf[0]);
+        
         /*
         for(int i=0; i<bytes; i++){ //iterates through every byte of the buf received
 
@@ -117,7 +120,7 @@ int read_noncanonical(int argc, char *argv[])
 
     }
 
-    printf("\nReached stop state");
+    printf("\n\n\nReached stop state!!!!!!\n\n\n");
 
     // The while() cycle should be changed in order to respect the specifications
     // of the protocol indicated in the Lab guide

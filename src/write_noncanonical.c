@@ -44,8 +44,8 @@ int write_noncanonical(int argc, char *argv[])
 
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VTIME] = 10; // Inter-character timer unused
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -67,13 +67,13 @@ int write_noncanonical(int argc, char *argv[])
     printf("New termios structure set\n");
 
     // Create string to send
-    unsigned char set[10];
+    unsigned char set[5];
 
     set[0] = FLAG_SET;
-    set[2] = A_TRANSMITTER;
-    set[4] = C_SSET;
-    set[6] = A_TRANSMITTER ^ C_SSET;
-    set[8] = FLAG_SET;
+    set[1] = A_TRANSMITTER;
+    set[2] = C_SSET;
+    set[3] = A_TRANSMITTER ^ C_SSET;
+    set[4] = FLAG_SET;
 
     for (int i = 0; i < 10; i+=2) {
         printf("%x\n", set[i]);
@@ -87,7 +87,7 @@ int write_noncanonical(int argc, char *argv[])
     */
 
     //int bytes = write(fd, buf, BUF_SIZE);
-    int bytes = write(fd, set, 10);
+    int bytes = write(fd, set, 5);
     printf("%d bytes written\n", bytes);
 
     // Wait until all bytes have been written to the serial port

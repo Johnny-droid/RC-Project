@@ -2,10 +2,7 @@
 
 
 void StateMachine_Init(stateMachine_t * stateMachine) {
-    printf("Init state machine.\n");
-    printf("HEY, work!");
     stateMachine->currState = state_start;
-    printf("Finished Initializing");
 }
 
 
@@ -20,7 +17,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
     case state_flag:
         if (byte == A_TRANSMITTER) { stateMachine->currState = state_a; stateMachine->buf[0] = byte; }
         else if (byte == FLAG_SET) { stateMachine->currState = state_flag; }
-        else { stateMachine->currState = state_start; }
+        else { stateMachine->currState = state_start; } 
         break;
 
     case state_a:
