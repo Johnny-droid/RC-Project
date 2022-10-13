@@ -59,8 +59,9 @@ int llclose(int showStatistics);
 int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole role);
 int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field, int data_size);
 int sendFrame(unsigned char * frame, int fd, int frame_size);
-int readFrame();
-
+int readFrame(unsigned char * byte, int fd);
+int nonCanonicalOpen(char* port,struct termios *oldtio, int vtime, int vmin);
+int nonCanonicalClose(int fd, struct termios *oldtio);
 
 
 #endif // _LINK_LAYER_H_
