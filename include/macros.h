@@ -11,10 +11,24 @@
 
 #define BUF_SIZE 256
 
-#define FLAG_SET 0x7E
-#define A_TRANSMITTER 0x03
-#define A_RECEIVER 0x01
-#define C_SSET 0x03   // Supervision Set
-#define C_SUA 0x07    // Supervision UA
+#define DATA_SIZE_FRAME 1
+
+#define FLAG 0x7E
+#define A_TRANS_COMM 0x03
+#define A_REC_ANS 0x03
+#define A_TRANS_ANS 0x01
+#define A_REC_COMM 0x01
+#define C_SSET 0x03    // Supervision SET
+#define C_SUA 0x07     // Supervision UA
+#define C_DISC 0x0B    // Supervision DISC
+#define C_RR_0 0x05    // Supervision RR N(0)
+#define C_RR_1 0x85    // Supervision RR N(1)
+#define C_REJ_0 0x01   // Supervision REJ N(0)
+#define C_REJ_1 0x81   // Supervision REJ N(1)
+#define C_INFO_0 0x00  // Information N(0)
+#define C_INFO_1 0x50  // Information N(1)
+
+
+
 
 #endif
