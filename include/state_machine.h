@@ -6,6 +6,13 @@
 #include "macros.h"
 
 typedef enum {
+    Waiting_UA,
+    Received_UA,
+    Waiting_SET,
+    Received_SET
+} stage;
+
+typedef enum {
     state_start,
     state_flag,
     state_a,
@@ -15,15 +22,12 @@ typedef enum {
 } state_t;
 
 typedef struct{
-    state_t currState;
+    stage curr_global_stage;            // Current global stage
+    state_t curr_state;              // Individual frame reading state
     unsigned char buf[BUF_SIZE];
-    unsigned char address_byte;
-    unsigned char ctrl_byte;
 } stateMachine_t;
 
-void StateMachine_Init(stateMachine_t * stateMachine);
 void StateMachine_RunIteration (stateMachine_t * stateMachine, unsigned char byte);
-state_t StateMachine_GetState (stateMachine_t * stateMachine);
-void StateMahcine_Destroy (stateMachine_t * stateMachine);
+void StateMachine_Destroy (stateMachine_t * stateMachine);
 
 #endif

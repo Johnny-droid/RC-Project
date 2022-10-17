@@ -8,14 +8,22 @@
 int fd;
 struct termios oldtio;
 
+
+LinkLayer connectionParameters;
+stateMachine_t stateMachine;    // State of the state machine (individual frames)
+
+int alarmEnabled = FALSE;
+int alarmCount = 0;
+
 ////////////////////////////////////////////////
 // LLOPEN
 ////////////////////////////////////////////////
-int llopen(LinkLayer connectionParameters)
+int llopen(LinkLayer newConnectionParameters)
 {
-
+    connectionParameters = newConnectionParameters;
     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
     
+
     if (fd < 0)
     {
         perror(connectionParameters.serialPort);
@@ -34,7 +42,7 @@ int llopen(LinkLayer connectionParameters)
     // Clear struct for new port settings
     memset(&newtio, 0, sizeof(newtio));
 
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = connectionParameters.baudRate | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
@@ -58,26 +66,82 @@ int llopen(LinkLayer connectionParameters)
     }
 
     printf("New termios structure set\n");
-    return fd;
-
-
 
     if(fd<=0){
-        printf("failed open noncanonical\n");
+        printf("failed open serialport in llopen\n");
         return -1;
     }
 
 
-    unsigned char frame[10];
+    /////////// Transmiter
+    if (connectionParameters.role == LlTx) {
 
-    if(createSupFrame(frame, C_SSET, LlTx)<=0){
-        printf("failed to create sup frame\n");
-        return -1;
+        unsigned char frame[5];
+
+        if(createSupFrame(frame, C_SSET)<=0){
+            printf("failed to create SET frame in Tx\n");
+            return -1;
+        }
+
+
+        stateMachine.curr_global_stage = Waiting_UA;
+
+        (void)signal(SIGALRM, alarmHandler);
+
+        while (alarmCount < connectionParameters.nRetransmissions) {
+
+            if (alarmEnabled == FALSE) {
+                alarm(connectionParameters.timeout);
+                alarmEnabled = TRUE;
+
+                int bytes = sendFrame(frame, 5);
+                printf("%d bytes written\n", bytes);
+            }
+
+            
+            readFrame();
+            if (stateMachine.curr_global_stage == Received_UA ) {
+                printf("REached here");
+                alarm(0);
+                alarmEnabled = FALSE;
+                break;
+            }
+            
+        } 
+
+
+        //Just testing
+        if (stateMachine.curr_global_stage == Received_UA) {
+            printf("\nReceived UA nicely\n");
+        } else {
+            printf("\nTimeout\n");
+        }
+        
+       
+        
+
+
+    ////////// Receiver
+    } else {
+        
+        //read the Set frame
+        stateMachine.curr_global_stage = Waiting_SET;
+        
+        readFrame();
+
+        //send UA
+        unsigned char frame[5];
+
+        if(createSupFrame(frame, C_SUA)<=0){
+            printf("failed to create UA frame in Rx\n");
+            return -1;
+        }
+
+        sendFrame(frame, 5);
+
+        printf("\n\n\nReached stop state!!!!!!\n\n\n");
     }
-
-
-    int bytes = sendFrame(frame, 10);
-    printf("%d bytes written\n", bytes);
+    
 
     sleep(1);
 
@@ -123,10 +187,10 @@ int llclose(int showStatistics)
 }
 
 
-int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole role){
+int createSupFrame(unsigned char *frame, unsigned char ctrl_field){
     unsigned char address_byte;
     
-    switch (role)
+    switch (connectionParameters.role)
     {
     case LlTx:
         if(ctrl_field == C_SSET || ctrl_field == C_DISC){
@@ -185,16 +249,47 @@ int sendFrame(unsigned char * frame, int frame_size){
     if (fine<=0){
         return -1;
     }
-    return fine;
-}
 
-int readFrame(unsigned char* byte){
-    int fine;
-    fine = read(fd, byte, sizeof(unsigned char));
-    if (fine<=0){
-        return -1;
+    // Just testing
+    printf("Inside sendFrame\n");
+    for (int i = 0; i < 5; i++) {
+        printf("%x\n", frame[i]);
     }
+
     return fine;
 }
 
+int readFrame() {
+    unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
+
+    stateMachine.curr_state = state_start; //starts state machine
+
+    while (stateMachine.curr_state != state_stop) {
+        int bytes = read(fd, buf, 1); 
+
+        if (bytes == 0) {
+            printf("Didn't read anything \n");
+            fflush(stdout);
+            continue;
+        }
+        
+        printf("Init State: %d\n", stateMachine.curr_state);
+        printf("Byte read: %x \n", buf[0]);
+        fflush(stdout);
+        buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
+        
+        StateMachine_RunIteration(&stateMachine, buf[0]);
+    }
+
+    return 1;
+}
+
+void alarmHandler(int signal)
+{
+    alarmEnabled = FALSE;
+    alarmCount++;
+    stateMachine.curr_state = state_stop;
+
+    printf("Alarm #%d\n", alarmCount);
+}
 

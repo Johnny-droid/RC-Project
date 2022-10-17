@@ -6,19 +6,34 @@
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {
-    //LinkLayerRole link_role;
-    
+
+    LinkLayerRole link_role; 
+    LinkLayer link_layer;  
+    link_layer.nRetransmissions = nTries;
+    link_layer.baudRate = baudRate;
+    link_layer.timeout = timeout;
 
     if (strcmp((char*) role, "tx") == 0) {
+        link_role = LlTx;
+        link_layer.role = link_role;
+        strcpy(link_layer.serialPort, "/dev/ttyS10");
+        llopen(link_layer);
+
+        /*
         printf("write\n");
         char* argv_write[] = {"make", "/dev/ttyS10"};
         write_noncanonical(2, argv_write);
-        //link_role = LlTx;
+        */
     } else {
-        printf("read\n");
+        link_role = LlRx;
+        link_layer.role = link_role;
+        strcpy(link_layer.serialPort, "/dev/ttyS11");
+        llopen(link_layer);
+        
+        /*
         char* argv_read[] = {"make", "/dev/ttyS11"};
         read_noncanonical(2, argv_read);
-        //link_role = LlRx;
+        */
 
     }
     

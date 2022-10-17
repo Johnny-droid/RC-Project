@@ -71,11 +71,12 @@ int read_noncanonical(int argc, char *argv[])
     printf("New termios structure set\n");
 
     // Loop for input
-    unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
+    //unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
 
-    stateMachine_t stateMachine; //creates state machine
-    StateMachine_Init(&stateMachine); //starts state machine
+    //stateMachine_t stateMachine; //creates state machine
+    //StateMachine_Init(&stateMachine); //starts state machine
 
+    /*
     while (StateMachine_GetState(&stateMachine) != state_stop) {
         // Returns after 5 chars have been input
         printf("Didn't read anything \n");
@@ -89,7 +90,7 @@ int read_noncanonical(int argc, char *argv[])
         
         StateMachine_RunIteration(&stateMachine, buf[0]);
         
-        /*
+        
         for(int i=0; i<bytes; i++){ //iterates through every byte of the buf received
 
             switch (buf[i]) 
@@ -116,9 +117,9 @@ int read_noncanonical(int argc, char *argv[])
             }
         
         }
-        */
+        
 
-    }
+    }*/
 
     printf("\n\n\nReached stop state!!!!!!\n\n\n");
 

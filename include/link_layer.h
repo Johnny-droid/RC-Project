@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
+#include <signal.h>
 #include "macros.h"
 #include "state_machine.h"
 
@@ -30,6 +31,7 @@ typedef struct
     int timeout;
 
 } LinkLayer;
+
 
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
@@ -59,10 +61,11 @@ int llread(unsigned char *packet);
 int llclose(int showStatistics);
 
 
-int createSupFrame(unsigned char *frame, unsigned char ctrl_field, LinkLayerRole role);
+int createSupFrame(unsigned char *frame, unsigned char ctrl_field);
 int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field);
 int sendFrame(unsigned char * frame, int frame_size);
-int readFrame(unsigned char * byte);
+int readFrame();
+void alarmHandler(int signal);
 
 
 
