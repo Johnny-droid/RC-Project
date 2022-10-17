@@ -69,11 +69,11 @@ int write_noncanonical(int argc, char *argv[])
     // Create string to send
     unsigned char set[5];
 
-    set[0] = FLAG_SET;
-    set[1] = A_TRANSMITTER;
+    set[0] = FLAG;
+    set[1] = A_TRANS_COMM;
     set[2] = C_SSET;
-    set[3] = A_TRANSMITTER ^ C_SSET;
-    set[4] = FLAG_SET;
+    set[3] = A_TRANS_COMM ^ C_SSET;
+    set[4] = FLAG;
 
     for (int i = 0; i < 10; i+=2) {
         printf("%x\n", set[i]);
