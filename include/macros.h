@@ -11,7 +11,7 @@
 
 #define BUF_SIZE 256
 
-#define DATA_SIZE_FRAME 1
+#define DATA_SIZE_FRAME 8
 
 #define FLAG 0x7E
 #define A_TRANS_COMM 0x03

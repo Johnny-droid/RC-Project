@@ -101,7 +101,6 @@ int llopen(LinkLayer newConnectionParameters)
             
             readFrame();
             if (stateMachine.curr_global_stage == Received_UA ) {
-                printf("REached here");
                 alarm(0);
                 alarmEnabled = FALSE;
                 break;
@@ -118,8 +117,6 @@ int llopen(LinkLayer newConnectionParameters)
         }
         
        
-        
-
 
     ////////// Receiver
     } else {
@@ -143,18 +140,18 @@ int llopen(LinkLayer newConnectionParameters)
     }
     
 
-    sleep(1);
-
-
     return 0;
 }
 
 ////////////////////////////////////////////////
 // LLWRITE
 ////////////////////////////////////////////////
-int llwrite(const unsigned char *buf, int bufSize)
+int llwrite(int id, const unsigned char *buf, int bufSize)
 {
     // TODO
+    unsigned char frame[6 + DATA_SIZE_FRAME];
+
+
 
     return 0;
 }
@@ -229,17 +226,20 @@ int createSupFrame(unsigned char *frame, unsigned char ctrl_field){
 
 int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field){
     
+    char bcc2 = data[0];
     frame[0] = FLAG;
     frame[1] = A_TRANS_COMM;
     frame[2] = ctrl_field;
     frame[3] = A_TRANS_COMM ^ ctrl_field;
-    for (int i = 0; i < DATA_SIZE_FRAME; i++) {
+    frame[4] = data[0];
+    for (int i = 1; i < DATA_SIZE_FRAME; i++) {
         frame[4 + i] = data[i];
+        bcc2 ^= data[i];
     }
-    frame[4+DATA_SIZE_FRAME]= A_TRANS_COMM ^ ctrl_field;
+    frame[4+DATA_SIZE_FRAME] = bcc2;
     frame[4+DATA_SIZE_FRAME+1]= FLAG;
 
-    return 0;
+    return 1;
 
 }
 

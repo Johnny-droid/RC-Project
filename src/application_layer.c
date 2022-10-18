@@ -7,6 +7,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {
 
+    // temporary message
+    char* message = "Hello world of RC! This is a new era of life!";
+    unsigned int message_size = strlen(message);
+
     LinkLayerRole link_role; 
     LinkLayer link_layer;  
     link_layer.nRetransmissions = nTries;
@@ -29,6 +33,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         link_layer.role = link_role;
         strcpy(link_layer.serialPort, "/dev/ttyS11");
         llopen(link_layer);
+        
         
         /*
         char* argv_read[] = {"make", "/dev/ttyS11"};
