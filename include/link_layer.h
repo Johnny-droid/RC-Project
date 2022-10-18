@@ -67,6 +67,9 @@ int sendFrame(unsigned char * frame, int frame_size);
 int readFrame();
 void alarmHandler(int signal);
 
+void frameStuffer(unsigned char *frame, int frameSize);
+void frameDeStuffer(unsigned char *frame, int frameSize);
+
 
 
 #endif // _LINK_LAYER_H_

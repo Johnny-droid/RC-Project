@@ -46,8 +46,6 @@ int llopen(LinkLayer newConnectionParameters)
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
-            //gotta change some of these values (VTIME and VMIN)
-
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 10; // Inter-character timer unused
@@ -148,8 +146,28 @@ int llopen(LinkLayer newConnectionParameters)
 ////////////////////////////////////////////////
 int llwrite(int id, const unsigned char *buf, int bufSize)
 {
-    // TODO
-    unsigned char frame[6 + DATA_SIZE_FRAME];
+    int frameSize = 6+bufSize+INFOBUFFERSIZE;
+    unsigned char frame[frameSize];
+    int Ns = 0;
+
+    //how does ns work?? it needs to alternate with each successful info exchanged. But thing is, this only works if i divide the data sent into at least two parts right? if not then if i send a whole buffer of info, there is no way of knowing which ns it is?? the AL doesnt send that info. 
+
+    if(Ns==0){
+
+        if(createInfoFrame(&frame, &buf, C_INFO_0)<=0){
+            printf("failed to create UA frame in Rx\n");
+            return -1;
+        }
+
+        frameStuffer(&frame, frameSize);
+        sendFrame(&frame, frameSize);
+
+        readFrame();
+
+        
+
+
+    }
 
 
 
@@ -278,7 +296,7 @@ int readFrame() {
         fflush(stdout);
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
         
-        StateMachine_RunIteration(&stateMachine, buf[0]);
+        StateMachine_RunIteration(&stateMachine, buf[0]); //if frame is stuffed, there need to be a mechanism that allows for stuffed flags/escapes to be skipped instead of being taken at face value
     }
 
     return 1;
@@ -293,3 +311,54 @@ void alarmHandler(int signal)
     printf("Alarm #%d\n", alarmCount);
 }
 
+
+void frameStuffer(unsigned char *frame, int frameSize){
+    unsigned char tempframe[frameSize];
+    int counter = 0;
+   
+    for (int i = 1; i < frameSize-1; i++) { //skip flags
+       switch (frame[i])
+       {
+       case FLAG:
+        tempframe[i+counter]=frame[i]; // 0x7d
+        counter++;
+        tempframe[i+counter]=frame[i]^TRANSPARENCY; // 0x5e 
+        break;
+
+       case ESC:
+        tempframe[i+counter]=frame[i]; // 0x7d
+        counter++;
+        tempframe[i+counter]=frame[i]^TRANSPARENCY; // 0x5d 
+
+        break;
+       
+       default:
+        tempframe[i+counter]=frame[i];
+        break;
+       }
+    }
+
+    frame=tempframe;
+}
+
+
+void frameDeStuffer(unsigned char *frame, int frameSize){
+    unsigned char tempframe[frameSize];
+    int counter = 0;
+    
+    for (int i = 0; i < frameSize; i++) {
+        if(frame[i+counter]==FLAG && frame[i+counter+1]==FLAG^TRANSPARENCY){
+            tempframe[i]=FLAG;
+            counter++;
+        }else if(frame[i+counter]==ESC && frame[i+counter+1]==FLAG^TRANSPARENCY){
+            tempframe[i]=ESC;
+            counter++;
+        }else{
+            tempframe[i]=frame[i+counter];
+        }
+
+    }
+
+    frame=tempframe;
+
+}

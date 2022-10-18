@@ -11,9 +11,12 @@
 
 #define BUF_SIZE 256
 
-#define DATA_SIZE_FRAME 8
+#define DATA_SIZE_FRAME 8       //? why 8?
+#define INFOBUFFERSIZE  20   //info frame can have 6+bufsize, but it needs to support stuffing, so it needs to be bigger, but i cant think of a solution, so itll have to be a placeholder thanks bye 
 
 #define FLAG 0x7E
+#define ESC 0x7D
+#define TRANSPARENCY 0x20
 #define A_TRANS_COMM 0x03
 #define A_REC_ANS 0x03
 #define A_TRANS_ANS 0x01
