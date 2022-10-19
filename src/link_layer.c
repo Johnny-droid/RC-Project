@@ -9,7 +9,8 @@ LinkLayer connectionParameters;
 stateMachine_t stateMachine;    // State of the state machine (individual frames)
 
 int alarmEnabled = FALSE;
-int alarmCount = 0;
+int error_count = 0;
+int Ns = 0; //ns of the frame being worked on
 
 ////////////////////////////////////////////////
 // LLOPEN
@@ -19,7 +20,6 @@ int llopen(LinkLayer newConnectionParameters)
     connectionParameters = newConnectionParameters;
     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
     
-
     if (fd < 0)
     {
         perror(connectionParameters.serialPort);
@@ -42,11 +42,9 @@ int llopen(LinkLayer newConnectionParameters)
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
-            //gotta change some of these values (VTIME and VMIN)
-
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 10; // Inter-character timer unused
+    newtio.c_cc[VTIME] = 5; // Inter-character timer unused
     newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
@@ -72,25 +70,27 @@ int llopen(LinkLayer newConnectionParameters)
     /////////// Transmiter
     if (connectionParameters.role == LlTx) {
 
-        unsigned char frame[5];
+        // create the SET frame
+        unsigned char frame[SUPERVISION_SIZE];
 
         if(createSupFrame(frame, C_SSET)<=0){
             printf("failed to create SET frame in Tx\n");
             return -1;
         }
 
-
         stateMachine.curr_global_stage = Waiting_UA;
+        stateMachine.curr_state = state_start;
 
         (void)signal(SIGALRM, alarmHandler);
+        error_count = 0;
 
-        while (alarmCount < connectionParameters.nRetransmissions) {
+        while (error_count < connectionParameters.nRetransmissions) {
 
             if (alarmEnabled == FALSE) {
                 alarm(connectionParameters.timeout);
                 alarmEnabled = TRUE;
 
-                int bytes = sendFrame(frame, 5);
+                int bytes = sendFrame(frame, SUPERVISION_SIZE);
                 printf("%d bytes written\n", bytes);
             }
 
@@ -104,7 +104,6 @@ int llopen(LinkLayer newConnectionParameters)
             
         } 
 
-
         //Just testing
         if (stateMachine.curr_global_stage == Received_UA) {
             printf("\nReceived UA nicely\n");
@@ -112,6 +111,7 @@ int llopen(LinkLayer newConnectionParameters)
             printf("\nTimeout\n");
         }
         
+        Ns = 0;
        
 
     ////////// Receiver
@@ -119,18 +119,21 @@ int llopen(LinkLayer newConnectionParameters)
         
         //read the Set frame
         stateMachine.curr_global_stage = Waiting_SET;
+        stateMachine.curr_state = state_start;
         
         readFrame();
 
         //send UA
-        unsigned char frame[5];
+        unsigned char frame[SUPERVISION_SIZE];
 
         if(createSupFrame(frame, C_SUA)<=0){
             printf("failed to create UA frame in Rx\n");
             return -1;
         }
 
-        sendFrame(frame, 5);
+        sendFrame(frame, SUPERVISION_SIZE);
+
+        Ns = 1;
 
         printf("\n\n\nReached stop state!!!!!!\n\n\n");
     }
@@ -142,17 +145,61 @@ int llopen(LinkLayer newConnectionParameters)
 ////////////////////////////////////////////////
 // LLWRITE
 ////////////////////////////////////////////////
-int llwrite(int id, const unsigned char *buf, int bufSize)
+int llwrite(int id, unsigned char *buf, int bufSize)
 {
-    // TODO
-    unsigned char frame[6 + DATA_SIZE_FRAME];
-    if(createInfoFrame(frame, buf, id)<=0) {  // it's the id control, right???
+    int ctrl_info_field;
+    int Ns_received;
+    int frame_size = 6+DATA_SIZE_FRAME;
+    unsigned char frame[frame_size*2];
+
+    if (Ns == 0) {ctrl_info_field = C_INFO_0; } 
+    else { ctrl_info_field = C_INFO_1; }
+
+    if (createInfoFrame(frame, buf, ctrl_info_field)<=0) {
         printf("failed to create UA frame in Rx\n");
         return -1;
     }
 
-    //sendFrame(frame, 6 + DATA_SIZE_FRAME);
+    frame_size = frameStuffer(frame, frame_size);
 
+    (void)signal(SIGALRM, alarmHandler);
+    error_count = 0;
+    stateMachine.curr_global_stage = Waiting_RR;
+    stateMachine.curr_state = state_start;
+
+    while (error_count < connectionParameters.nRetransmissions) {
+
+        if (alarmEnabled == FALSE) {
+            alarm(connectionParameters.timeout);
+            alarmEnabled = TRUE;
+
+            int bytes = sendFrame(frame, frame_size);;
+            printf("%d bytes written\n", bytes);
+        }
+
+        
+        readFrame();
+
+        if (stateMachine.buf[1] == C_RR_0) {
+            Ns_received = 0;
+        } else if (stateMachine.buf[1] == C_RR_1) {
+            Ns_received = 1;
+        }
+
+        if (stateMachine.curr_global_stage == Received_RR) {
+            if (Ns != Ns_received) { // right Ns received
+                alarm(0);
+                alarmEnabled = FALSE;
+                break;
+            } else {                // wrong Ns
+                error_count++;
+                sendFrame(frame, frame_size);
+                //alarm(connectionParameters.timeout);
+            }
+        }
+    }
+
+    Ns = (Ns+1) % 2; // switch between 0 and 1
 
     return 0;
 }
@@ -160,9 +207,59 @@ int llwrite(int id, const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet)
+int llread(int fd, unsigned char* buffer)
 {
-    // TODO
+    stateMachine.curr_global_stage = Waiting_I;
+    stateMachine.curr_state = state_start;
+    stateMachine.counter = 0;
+    int ctrl_rr_field;
+    int Ns_received;
+    unsigned char frame[SUPERVISION_SIZE];
+
+    //read the I frame
+    do {
+        readFrame();
+
+        // NEEDS MORE CONDITIONS (not only for set, but for previous read check Ns probably)
+        // Received a previous set
+        while (stateMachine.curr_global_stage == Received_SET) {
+            //send UA
+            unsigned char frame[SUPERVISION_SIZE];
+            if(createSupFrame(frame, C_SUA)<=0){
+                printf("failed to create UA frame in Rx\n");
+                return -1;
+            }
+            sendFrame(frame, SUPERVISION_SIZE);
+        }; 
+
+        // checks if the frame received is from the previous read (if so, resend the corresponding RR)
+        if(stateMachine.buf[1] == C_INFO_0){ Ns_received = 0; ctrl_rr_field = C_RR_1; } 
+        else if(stateMachine.buf[1] == C_INFO_1){ Ns_received = 1; ctrl_rr_field = C_RR_0; }
+        
+        if (Ns == Ns_received) {
+            if (createSupFrame(frame, ctrl_rr_field)<=0) {
+                printf("failed to create UA frame in Rx\n");
+                return -1;
+            }
+            sendFrame(frame, SUPERVISION_SIZE);
+            stateMachine.curr_global_stage = Waiting_I;
+        }
+
+    } while (stateMachine.curr_global_stage != Received_I);
+
+    printf("Received Info frame\n");
+
+    //send RR
+    if (createSupFrame(frame, ctrl_rr_field)<=0) {
+        printf("failed to create UA frame in Rx\n");
+        return -1;
+    }
+
+    sendFrame(frame, SUPERVISION_SIZE);
+    
+    memcpy(buffer, stateMachine.buf + 2, stateMachine.counter); //if correct, copies only the data part of the buffer
+    
+    Ns = (Ns+1) % 2; // switch between 0 and 1
 
     return 0;
 }
@@ -225,14 +322,14 @@ int createSupFrame(unsigned char *frame, unsigned char ctrl_field){
 
 }
 
-int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field){
+int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field) {
     
-    char bcc2 = data[0];
     frame[0] = FLAG;
     frame[1] = A_TRANS_COMM;
     frame[2] = ctrl_field;
     frame[3] = A_TRANS_COMM ^ ctrl_field;
     frame[4] = data[0];
+    char bcc2 = data[0];
     for (int i = 1; i < DATA_SIZE_FRAME; i++) {
         frame[4 + i] = data[i];
         bcc2 ^= data[i];
@@ -259,7 +356,7 @@ int sendFrame(unsigned char * frame, int frame_size){
 
     // Just testing
     printf("Inside sendFrame\n");
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < SUPERVISION_SIZE; i++) {
         printf("%x\n", frame[i]);
     }
 
@@ -268,6 +365,7 @@ int sendFrame(unsigned char * frame, int frame_size){
 
 int readFrame() {
     unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
+    int rr = -1;  //if frame is approved, this saves the ns received
 
     stateMachine.curr_state = state_start; //starts state machine
 
@@ -294,9 +392,66 @@ int readFrame() {
 void alarmHandler(int signal)
 {
     alarmEnabled = FALSE;
-    alarmCount++;
+    error_count++;
     stateMachine.curr_state = state_stop;
 
-    printf("Alarm #%d\n", alarmCount);
+    printf("Alarm #%d\n", error_count);
 }
 
+//NOT CORRECT, NEEDS FIXING
+int frameStuffer(unsigned char *frame, int frame_size){ 
+    unsigned char tempframe[frame_size*2];
+    int counter = 0;
+
+    tempframe[0] = frame[0];
+
+    for (int i = 1; i < frame_size-1; i++) { //skip flags
+        switch (frame[i])
+        {
+        case FLAG:
+            tempframe[i+counter] = ESC;
+            counter++;
+            tempframe[i+counter] = FLAG^TRANSPARENCY; // 0x5e 
+            break;
+
+        case ESC:
+            tempframe[i+counter] = ESC;
+            counter++;
+            tempframe[i+counter] = ESC^TRANSPARENCY; // 0x5d 
+            break;
+       
+        default:
+            tempframe[i+counter] = frame[i];
+            break;
+        }
+    }
+
+    tempframe[frame_size+counter] = frame[frame_size];
+
+    memcpy(frame, tempframe, frame_size+counter);
+
+    return frame_size+counter;
+}
+
+/*
+void frameDeStuffer(unsigned char *frame, int frame_size){
+    unsigned char tempframe[frameSize];
+    int counter = 0;
+    
+    for (int i = 0; i < frameSize; i++) {
+        if(frame[i+counter]==FLAG && frame[i+counter+1]==FLAG^TRANSPARENCY){
+            tempframe[i]=FLAG;
+            counter++;
+        }else if(frame[i+counter]==ESC && frame[i+counter+1]==FLAG^TRANSPARENCY){
+            tempframe[i]=ESC;
+            counter++;
+        }else{
+            tempframe[i]=frame[i+counter];
+        }
+
+    }
+
+    frame=tempframe;
+
+}
+*/

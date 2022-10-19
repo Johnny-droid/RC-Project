@@ -9,11 +9,21 @@
 #define FALSE 0
 #define TRUE 1
 
-#define BUF_SIZE 256
 
-#define DATA_SIZE_FRAME 8
+// SIZE of maximum acceptable payload.
+// Maximum number of bytes that application layer should send to link layer
+#define MAX_PAYLOAD_SIZE 1000
+
+
+#define BUF_SIZE 2000
+
+#define DATA_SIZE_FRAME 1000
+
+#define SUPERVISION_SIZE 5
 
 #define FLAG 0x7E
+#define ESC 0x7D
+#define TRANSPARENCY 0x20
 #define A_TRANS_COMM 0x03
 #define A_REC_ANS 0x03
 #define A_TRANS_ANS 0x01

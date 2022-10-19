@@ -8,8 +8,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 {
 
     // temporary message
-    char* message = "Hello world of RC! This is a new era of life!";
-    unsigned int message_size = strlen(message);
+    //char* message = "Hello world of RC! This is a new era of life!";
+    //unsigned int message_size = strlen(message);
 
     LinkLayerRole link_role; 
     LinkLayer link_layer;  

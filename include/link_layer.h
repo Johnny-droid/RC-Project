@@ -33,9 +33,6 @@ typedef struct
 } LinkLayer;
 
 
-// SIZE of maximum acceptable payload.
-// Maximum number of bytes that application layer should send to link layer
-#define MAX_PAYLOAD_SIZE 1000
 
 // MISC
 #define FALSE 0
@@ -49,11 +46,11 @@ int llopen(LinkLayer connectionParameters);
 
 // Send data in buf with size bufSize.
 // Return number of chars written, or "-1" on error.
-int llwrite(int id, const unsigned char *buf, int bufSize);
+int llwrite(int id, unsigned char *buf, int bufSize);
 
 // Receive data in packet.
 // Return number of chars read, or "-1" on error.
-int llread(unsigned char *packet);
+int llread(int fd, unsigned char * buffer);
 
 // Close previously opened connection.
 // if showStatistics == TRUE, link layer should print statistics in the console on close.
@@ -66,6 +63,9 @@ int createInfoFrame(unsigned char *frame, unsigned char *data, unsigned char ctr
 int sendFrame(unsigned char * frame, int frame_size);
 int readFrame();
 void alarmHandler(int signal);
+
+int frameStuffer(unsigned char *frame, int frame_size);
+//void frameDeStuffer(unsigned char *frame, int bufSize);
 
 
 
