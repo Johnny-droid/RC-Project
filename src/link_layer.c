@@ -13,9 +13,8 @@ LinkLayer connectionParameters;
 stateMachine_t stateMachine;    // State of the state machine (individual frames)
 
 int alarmEnabled = FALSE;
-int alarmCount = 0;
-int Ns = 0;
-int Nswanted = 1;
+int error_count = 0;
+int Ns = 0; //ns of the frame being worked on
 
 ////////////////////////////////////////////////
 // LLOPEN
@@ -76,7 +75,7 @@ int llopen(LinkLayer newConnectionParameters)
     /////////// Transmiter
     if (connectionParameters.role == LlTx) {
 
-        unsigned char frame[5];
+        unsigned char frame[SUPERVISION_SIZE];
 
         if(createSupFrame(frame, C_SSET)<=0){
             printf("failed to create SET frame in Tx\n");
@@ -88,13 +87,13 @@ int llopen(LinkLayer newConnectionParameters)
 
         (void)signal(SIGALRM, alarmHandler);
 
-        while (alarmCount < connectionParameters.nRetransmissions) {
+        while (error_count < connectionParameters.nRetransmissions) {
 
             if (alarmEnabled == FALSE) {
                 alarm(connectionParameters.timeout);
                 alarmEnabled = TRUE;
 
-                int bytes = sendFrame(frame, 5);
+                int bytes = sendFrame(frame, SUPERVISION_SIZE);
                 printf("%d bytes written\n", bytes);
             }
 
@@ -127,14 +126,14 @@ int llopen(LinkLayer newConnectionParameters)
         readFrame();
 
         //send UA
-        unsigned char frame[5];
+        unsigned char frame[SUPERVISION_SIZE];
 
         if(createSupFrame(frame, C_SUA)<=0){
             printf("failed to create UA frame in Rx\n");
             return -1;
         }
 
-        sendFrame(frame, 5);
+        sendFrame(frame, SUPERVISION_SIZE);
 
         printf("\n\n\nReached stop state!!!!!!\n\n\n");
     }
@@ -148,52 +147,57 @@ int llopen(LinkLayer newConnectionParameters)
 ////////////////////////////////////////////////
 int llwrite(int id, const unsigned char *buf, int bufSize)
 {
-    int frameSize = 6+bufSize+INFOBUFFERSIZE;
-    unsigned char frame[frameSize];
+    int frame_size = 6+DATA_SIZE_FRAME;
+    unsigned char frame[frame_size*2];
+    int ctrl_info_field;
+    int Ns_wanted;
 
 
-    if(createInfoFrame(&frame, &buf, C_INFO_0)<=0){
+    if(Ns==0){
+        ctrl_info_field=C_INFO_0;
+    }else{
+        ctrl_info_field=C_INFO_1;
+    }
+
+    if(createInfoFrame(&frame, &buf, ctrl_info_field)<=0){
         printf("failed to create UA frame in Rx\n");
         return -1;
     }
-    frameStuffer(&frame, frameSize);
+
+    frame_size = frameStuffer(&frame, frame_size);
 
     
     (void)signal(SIGALRM, alarmHandler);
 
     stateMachine.curr_global_stage = Waiting_RR;
 
-    while (alarmCount < connectionParameters.nRetransmissions) {
+    while (error_count < connectionParameters.nRetransmissions) {
 
         if (alarmEnabled == FALSE) {
             alarm(connectionParameters.timeout);
             alarmEnabled = TRUE;
 
-            int bytes = sendFrame(&frame, frameSize);;
+            int bytes = sendFrame(&frame, frame_size);;
             printf("%d bytes written\n", bytes);
         }
 
         
         readFrame();
 
-        if(Ns!=Nswanted){
-            if (stateMachine.curr_global_stage == Received_RR ) {
-                alarm(0);
-                alarmEnabled = FALSE;
-                break;
-            }
+        if(stateMachine.buf[1]==C_RR_0){
+            Ns_wanted=0;
+        }else if(stateMachine.buf[1]==C_RR_1){
+            Ns_wanted=1;
         }
-        
-    
+
+        if(Ns!=Ns_wanted && stateMachine.curr_global_stage == Received_RR){
+            alarm(0);
+            alarmEnabled = FALSE;
+            break;
+        }else{
+            error_count++;
+        }
     }
-
-
-
-        
-
-
-    
-
 
 
     return 0;
@@ -202,9 +206,34 @@ int llwrite(int id, const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet)
+int llread(int fd, unsigned char * buffer)
 {
-    // TODO
+    //read the I frame
+    stateMachine.curr_global_stage = Waiting_I;
+
+    int ctrl_rr_field;
+        
+    readFrame();
+
+    memcpy(&buffer, stateMachine.buf + 2, stateMachine.counter); //if correct, copies only the data part of the buffer
+
+    if(stateMachine.buf[1]==C_INFO_0){
+        ctrl_rr_field = C_RR_1;
+    }else if(stateMachine.buf[1]==C_INFO_1){
+        ctrl_rr_field = C_RR_0;
+    }
+
+    //send RR
+    unsigned char frame[SUPERVISION_SIZE];
+
+    if(createSupFrame(frame, ctrl_rr_field)<=0){
+        printf("failed to create UA frame in Rx\n");
+        return -1;
+    }
+
+    sendFrame(frame, SUPERVISION_SIZE);
+
+    printf("\n\n\nReached stop state!!!!!!\n\n\n");
 
     return 0;
 }
@@ -295,7 +324,7 @@ int sendFrame(unsigned char * frame, int frame_size){
 
     // Just testing
     printf("Inside sendFrame\n");
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < SUPERVISION_SIZE; i++) {
         printf("%x\n", frame[i]);
     }
 
@@ -323,14 +352,7 @@ int readFrame() {
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
         
         StateMachine_RunIteration(&stateMachine, buf[0]);
-        if (buf[0]==C_RR_0){
-            rr=0;
-        } else if (buf[0]==C_RR_1){
-            rr=1;
-        }
     }
-
-    Nswanted=rr;
 
     return 1;
 }
@@ -338,18 +360,20 @@ int readFrame() {
 void alarmHandler(int signal)
 {
     alarmEnabled = FALSE;
-    alarmCount++;
+    error_count++;
     stateMachine.curr_state = state_stop;
 
-    printf("Alarm #%d\n", alarmCount);
+    printf("Alarm #%d\n", error_count);
 }
 
-
-void frameStuffer(unsigned char *frame, int frameSize){
-    unsigned char tempframe[frameSize];
+//NOT CORRECT, NEEDS FIXING
+int frameStuffer(unsigned char *frame, int frame_size){ 
+    unsigned char tempframe[BUF_SIZE];
     int counter = 0;
-   
-    for (int i = 1; i < frameSize-1; i++) { //skip flags
+
+    tempframe[0] = frame[0];
+
+    for (int i = 1; i < frame_size-1; i++) { //skip flags
        switch (frame[i])
        {
        case FLAG:
@@ -372,10 +396,12 @@ void frameStuffer(unsigned char *frame, int frameSize){
     }
 
     frame=tempframe;
+
+    return frame_size+counter;
 }
 
-
-void frameDeStuffer(unsigned char *frame, int frameSize){
+/*
+void frameDeStuffer(unsigned char *frame, int frame_size){
     unsigned char tempframe[frameSize];
     int counter = 0;
     
@@ -395,3 +421,4 @@ void frameDeStuffer(unsigned char *frame, int frameSize){
     frame=tempframe;
 
 }
+*/
