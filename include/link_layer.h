@@ -62,7 +62,7 @@ int llclose(int showStatistics);
 
 
 int createSupFrame(unsigned char *frame, unsigned char ctrl_field);
-int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field);
+int createInfoFrame(unsigned char *frame, unsigned char *data, unsigned char ctrl_field);
 int sendFrame(unsigned char * frame, int frame_size);
 int readFrame();
 void alarmHandler(int signal);

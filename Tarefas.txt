@@ -1,0 +1,12 @@
+a trama de REJ significa que consegui receber bem o cabeçalho, mas o payload está corrompido (não é obrigatório)
+valorização: fazer o nosso próprio gerador de ruído
+
+tem de se enviar o tamanho do ficheiro (e para valorização passar tbm o nome do ficheiro)
+
+meter o repositório público do repositório
+
+
+
+
+
+

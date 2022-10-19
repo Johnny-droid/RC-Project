@@ -150,7 +150,12 @@ int llwrite(int id, const unsigned char *buf, int bufSize)
 {
     // TODO
     unsigned char frame[6 + DATA_SIZE_FRAME];
+    if(createInfoFrame(frame, buf, id)<=0) {  // it's the id control, right???
+        printf("failed to create UA frame in Rx\n");
+        return -1;
+    }
 
+    //sendFrame(frame, 6 + DATA_SIZE_FRAME);
 
 
     return 0;
@@ -244,9 +249,15 @@ int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ct
 }
 
 int sendFrame(unsigned char * frame, int frame_size){
-    int fine;
-    fine = write(fd, frame, frame_size);
-    if (fine<=0){
+    int bytes_written;
+
+    int b = 0;
+    while (b != frame_size) {
+        bytes_written = write(fd, frame+b, frame_size-b);
+        b += bytes_written;
+    }
+    
+    if (b<=0){
         return -1;
     }
 
@@ -256,7 +267,7 @@ int sendFrame(unsigned char * frame, int frame_size){
         printf("%x\n", frame[i]);
     }
 
-    return fine;
+    return b;
 }
 
 int readFrame() {
