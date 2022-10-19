@@ -2,12 +2,8 @@
 
 #include "../include/link_layer.h"
 
-// MISC
-#define _POSIX_SOURCE 1 // POSIX compliant source
-
 int fd;
 struct termios oldtio;
-
 
 LinkLayer connectionParameters;
 stateMachine_t stateMachine;    // State of the state machine (individual frames)
