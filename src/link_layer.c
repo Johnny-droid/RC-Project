@@ -14,6 +14,8 @@ stateMachine_t stateMachine;    // State of the state machine (individual frames
 
 int alarmEnabled = FALSE;
 int alarmCount = 0;
+int Ns = 0;
+int Nswanted = 1;
 
 ////////////////////////////////////////////////
 // LLOPEN
@@ -148,26 +150,49 @@ int llwrite(int id, const unsigned char *buf, int bufSize)
 {
     int frameSize = 6+bufSize+INFOBUFFERSIZE;
     unsigned char frame[frameSize];
-    int Ns = 0;
 
-    //how does ns work?? it needs to alternate with each successful info exchanged. But thing is, this only works if i divide the data sent into at least two parts right? if not then if i send a whole buffer of info, there is no way of knowing which ns it is?? the AL doesnt send that info. 
 
-    if(Ns==0){
+    if(createInfoFrame(&frame, &buf, C_INFO_0)<=0){
+        printf("failed to create UA frame in Rx\n");
+        return -1;
+    }
+    frameStuffer(&frame, frameSize);
 
-        if(createInfoFrame(&frame, &buf, C_INFO_0)<=0){
-            printf("failed to create UA frame in Rx\n");
-            return -1;
+    
+    (void)signal(SIGALRM, alarmHandler);
+
+    stateMachine.curr_global_stage = Waiting_RR;
+
+    while (alarmCount < connectionParameters.nRetransmissions) {
+
+        if (alarmEnabled == FALSE) {
+            alarm(connectionParameters.timeout);
+            alarmEnabled = TRUE;
+
+            int bytes = sendFrame(&frame, frameSize);;
+            printf("%d bytes written\n", bytes);
         }
 
-        frameStuffer(&frame, frameSize);
-        sendFrame(&frame, frameSize);
-
+        
         readFrame();
+
+        if(Ns!=Nswanted){
+            if (stateMachine.curr_global_stage == Received_RR ) {
+                alarm(0);
+                alarmEnabled = FALSE;
+                break;
+            }
+        }
+        
+    
+    }
+
+
 
         
 
 
-    }
+    
 
 
 
@@ -279,6 +304,7 @@ int sendFrame(unsigned char * frame, int frame_size){
 
 int readFrame() {
     unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
+    int rr = -1;  //if frame is approved, this saves the ns received
 
     stateMachine.curr_state = state_start; //starts state machine
 
@@ -296,8 +322,15 @@ int readFrame() {
         fflush(stdout);
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
         
-        StateMachine_RunIteration(&stateMachine, buf[0]); //if frame is stuffed, there need to be a mechanism that allows for stuffed flags/escapes to be skipped instead of being taken at face value
+        StateMachine_RunIteration(&stateMachine, buf[0]);
+        if (buf[0]==C_RR_0){
+            rr=0;
+        } else if (buf[0]==C_RR_1){
+            rr=1;
+        }
     }
+
+    Nswanted=rr;
 
     return 1;
 }

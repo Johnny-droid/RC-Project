@@ -9,7 +9,11 @@ typedef enum {
     Waiting_UA,
     Received_UA,
     Waiting_SET,
-    Received_SET
+    Received_SET,
+    Waiting_RR,
+    Received_RR,
+    Waiting_I,
+    Received_I
 } stage;
 
 typedef enum {
