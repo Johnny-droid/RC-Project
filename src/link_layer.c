@@ -225,15 +225,27 @@ int llread(unsigned char* buffer)
 
         // NEEDS MORE CONDITIONS (not only for set, but for previous read check Ns probably)
         // Received a previous set
-        while (stateMachine.curr_global_stage == Received_SET) {
+        if (stateMachine.curr_global_stage == Received_SET) {
             //send UA
-            unsigned char frame[SUPERVISION_SIZE];
             if(createSupFrame(frame, C_SUA)<=0){
                 printf("failed to create UA frame in Rx\n");
                 return -1;
             }
             sendFrame(frame, SUPERVISION_SIZE);
+            stateMachine.curr_global_stage = Waiting_I;
+            continue;
         }; 
+
+        if (stateMachine.curr_global_stage == Received_DISC) {
+            // send DISC
+            if(createSupFrame(frame, C_DISC)<=0){
+                printf("failed to create UA frame in Rx\n");
+                return -1;
+            }
+            sendFrame(frame, SUPERVISION_SIZE);
+            stateMachine.curr_global_stage = Waiting_UA;
+            break;
+        }
 
         // checks if the frame received is from the previous read (if so, resend the corresponding RR)
         if(stateMachine.buf[1] == C_INFO_0){ Ns_received = 0; ctrl_rr_field = C_RR_1; } 
@@ -249,6 +261,10 @@ int llread(unsigned char* buffer)
         }
 
     } while (stateMachine.curr_global_stage != Received_I);
+
+    if (stateMachine.curr_global_stage == Waiting_UA) {
+        return 1;
+    }
 
     printf("Received Info frame\n");
 
@@ -271,7 +287,64 @@ int llread(unsigned char* buffer)
 // LLCLOSE
 ////////////////////////////////////////////////
 int llclose(int showStatistics)
-{
+{   
+
+    if (connectionParameters.role == LlTx) {
+        
+        unsigned char frame[SUPERVISION_SIZE];
+
+        if (createSupFrame(frame, C_DISC)<=0) {
+            printf("failed to create DISC frame in Tx\n");
+            return -1;
+        }
+
+        stateMachine.curr_global_stage = Waiting_DISC;
+
+        (void)signal(SIGALRM, alarmHandler);
+        alarmEnabled = FALSE;
+        error_count = 0;
+
+        while (error_count < connectionParameters.nRetransmissions) {
+
+            if (alarmEnabled == FALSE) {
+                alarm(connectionParameters.timeout);
+                alarmEnabled = TRUE;
+
+                int bytes = sendFrame(frame, SUPERVISION_SIZE);
+                printf("%d bytes written\n", bytes);
+            }
+
+            
+            readFrame();
+
+            if (stateMachine.curr_global_stage == Received_DISC ) {
+                alarm(0);
+                alarmEnabled = FALSE;
+                if (createSupFrame(frame, C_SUA)<=0) {
+                    printf("failed to create DISC frame in Tx\n");
+                    return -1;
+                }
+                int bytes = sendFrame(frame, SUPERVISION_SIZE);
+                printf("%d bytes written\n", bytes);
+                break;
+            }
+            
+        } 
+
+
+
+    } else {
+
+        readFrame();
+
+        if (stateMachine.curr_global_stage == Received_UA ) {
+            printf("Connection closed successfully\n");
+        }
+
+
+    }
+
+
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
     {
@@ -369,7 +442,6 @@ int sendFrame(unsigned char * frame, int frame_size){
 
 int readFrame() {
     unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
-    int rr = -1;  //if frame is approved, this saves the ns received
     stateMachine.counter = 0;
     stateMachine.curr_state = state_start; //starts state machine
 

@@ -6,6 +6,7 @@ tem de se enviar o tamanho do ficheiro (e para valorização passar tbm o nome d
 meter o repositório público do repositório
 
 
+Ver a parte das estatísticas do curr_global_stage
 
 
 

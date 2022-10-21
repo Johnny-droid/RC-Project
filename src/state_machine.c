@@ -101,6 +101,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
         case state_a:
             if (byte == C_INFO_0 || byte == C_INFO_1) { stateMachine->curr_state = state_c; stateMachine->buf[1] = byte; } 
             else if (byte == C_SSET) { stateMachine->curr_global_stage = Waiting_SET; stateMachine->curr_state = state_c; stateMachine->buf[1] = byte; } 
+            else if (byte == C_DISC) { stateMachine->curr_global_stage = Waiting_DISC; stateMachine->curr_state = state_c; stateMachine->buf[1] = byte; }
             else if (byte == FLAG) {stateMachine->curr_state = state_flag; }
             else { stateMachine->curr_state = state_start; }
             break;
@@ -190,6 +191,46 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
             if (byte == FLAG) {
                 stateMachine->curr_state = state_stop; 
                 stateMachine->curr_global_stage = Received_RR;
+            }
+            else { stateMachine->curr_state = state_start; }
+            break;
+
+        default:
+            break;
+        }
+
+
+
+    } else if (stateMachine->curr_global_stage == Waiting_DISC) {
+
+        switch (stateMachine->curr_state)
+        {
+        case state_start:
+            if (byte == FLAG) { stateMachine->curr_state = state_flag; }
+            break;
+
+        case state_flag:
+            if (byte == A_TRANS_COMM) { stateMachine->curr_state = state_a; stateMachine->buf[0] = byte; }
+            else if (byte == FLAG) { stateMachine->curr_state = state_flag; }
+            else { stateMachine->curr_state = state_start; } 
+            break;
+
+        case state_a:
+            if (byte == C_DISC) { stateMachine->curr_state = state_c; stateMachine->buf[1] = byte; } 
+            else if (byte == FLAG) {stateMachine->curr_state = state_flag; }
+            else { stateMachine->curr_state = state_start; }
+            break;
+
+        case state_c:
+            if (byte == ((stateMachine->buf[0])^(stateMachine->buf[1]))) {
+                stateMachine->curr_state = state_bcc;
+            } else { stateMachine->curr_state = state_start; }
+            break;
+
+        case state_bcc:
+            if (byte == FLAG) {
+                stateMachine->curr_state = state_stop; 
+                stateMachine->curr_global_stage = Received_DISC;
             }
             else { stateMachine->curr_state = state_start; }
             break;

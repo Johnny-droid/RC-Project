@@ -13,7 +13,9 @@ typedef enum {
     Waiting_RR,
     Received_RR,
     Waiting_I,
-    Received_I
+    Received_I,
+    Waiting_DISC,
+    Received_DISC
 } stage;
 
 typedef enum {

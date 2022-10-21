@@ -25,6 +25,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
         llwrite(message, message_size);
 
+        llclose(1);
 
         /*
         printf("write\n");
@@ -38,9 +39,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         llopen(link_layer);
         
         unsigned char message_received[DATA_SIZE_FRAME];
-        llread(message_received);
+        int finished = FALSE;
+
+        while (!finished) {
+            finished = llread(message_received);
+            printf("\n%s\n", message_received);
+        }
         
-        printf("\n%s\n", message_received);
+        llclose(1);
+
+
+        
 
         /*
         char* argv_read[] = {"make", "/dev/ttyS11"};
