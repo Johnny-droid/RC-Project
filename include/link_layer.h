@@ -46,11 +46,11 @@ int llopen(LinkLayer connectionParameters);
 
 // Send data in buf with size bufSize.
 // Return number of chars written, or "-1" on error.
-int llwrite(int id, unsigned char *buf, int bufSize);
+int llwrite(unsigned char *buf, unsigned int bufSize);
 
 // Receive data in packet.
 // Return number of chars read, or "-1" on error.
-int llread(int fd, unsigned char * buffer);
+int llread(unsigned char * buffer);
 
 // Close previously opened connection.
 // if showStatistics == TRUE, link layer should print statistics in the console on close.
@@ -59,7 +59,7 @@ int llclose(int showStatistics);
 
 
 int createSupFrame(unsigned char *frame, unsigned char ctrl_field);
-int createInfoFrame(unsigned char *frame, unsigned char *data, unsigned char ctrl_field);
+int createInfoFrame(unsigned char *frame, unsigned char *data, unsigned int data_size, unsigned char ctrl_field);
 int sendFrame(unsigned char * frame, int frame_size);
 int readFrame();
 void alarmHandler(int signal);

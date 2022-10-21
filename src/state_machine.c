@@ -134,25 +134,22 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
 
         case state_data:
             if (byte == ESC) { stateMachine->curr_state = state_esc; }
-            else if (stateMachine->counter == DATA_SIZE_FRAME) {
+            else if (byte == FLAG) {
+                printf("End of data part\n");
                 int bcc2 = stateMachine->buf[2];
-                for (int i = 1; i < DATA_SIZE_FRAME; i++) {
+                for (int i = 1; i < stateMachine->counter-1; i++) {
                     bcc2 ^= stateMachine->buf[2+i];
                 }
-                if (bcc2 == byte) { stateMachine->curr_state = state_bcc2; }
+                printf("Calculated bcc2: %x\nReceived bcc2:%x\n", bcc2, stateMachine->buf[2+stateMachine->counter-1]);
+                if (bcc2 == stateMachine->buf[2+stateMachine->counter-1]) { 
+                    stateMachine->curr_state = state_stop;
+                    stateMachine->curr_global_stage = Received_I;
+                }
                 else {stateMachine->curr_state = state_start;} 
             } else {
                 stateMachine->counter++; 
                 stateMachine->buf[1+stateMachine->counter] = byte;
             }
-            break;
-
-        case state_bcc2:
-            if (byte == FLAG) {
-                stateMachine->curr_state = state_stop; 
-                stateMachine->curr_global_stage = Received_I;
-            }
-            else { stateMachine->curr_state = state_start; }
             break;
 
         default:

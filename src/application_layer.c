@@ -8,8 +8,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 {
 
     // temporary message
-    //char* message = "Hello world of RC! This is a new era of life!";
-    //unsigned int message_size = strlen(message);
+    unsigned char* message = "Hello world of RC! This is a new era of life!";
+    unsigned int message_size = strlen((char*) message);
 
     LinkLayerRole link_role; 
     LinkLayer link_layer;  
@@ -23,6 +23,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         strcpy(link_layer.serialPort, "/dev/ttyS10");
         llopen(link_layer);
 
+        llwrite(message, message_size);
+
+
         /*
         printf("write\n");
         char* argv_write[] = {"make", "/dev/ttyS10"};
@@ -34,7 +37,11 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         strcpy(link_layer.serialPort, "/dev/ttyS11");
         llopen(link_layer);
         
+        unsigned char message_received[DATA_SIZE_FRAME];
+        llread(message_received);
         
+        printf("\n%s\n", message_received);
+
         /*
         char* argv_read[] = {"make", "/dev/ttyS11"};
         read_noncanonical(2, argv_read);

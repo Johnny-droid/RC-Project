@@ -112,7 +112,7 @@ int llopen(LinkLayer newConnectionParameters)
         }
         
         Ns = 0;
-       
+       return 0;
 
     ////////// Receiver
     } else {
@@ -135,44 +135,47 @@ int llopen(LinkLayer newConnectionParameters)
 
         Ns = 1;
 
-        printf("\n\n\nReached stop state!!!!!!\n\n\n");
+        printf("\n\n\nReached end of llopen!!!!!!\n\n\n");
+        
+        return 0;
     }
     
 
-    return 0;
+    
 }
 
 ////////////////////////////////////////////////
 // LLWRITE
 ////////////////////////////////////////////////
-int llwrite(int id, unsigned char *buf, int bufSize)
+int llwrite(unsigned char *buf, unsigned int bufSize)
 {
     int ctrl_info_field;
     int Ns_received;
-    int frame_size = 6+DATA_SIZE_FRAME;
-    unsigned char frame[frame_size*2];
+    int frame_size = 6+bufSize; 
+    unsigned char frame[MAX_BUF_SIZE]; // To make sure there is no overflow because of stuffing
 
     if (Ns == 0) {ctrl_info_field = C_INFO_0; } 
     else { ctrl_info_field = C_INFO_1; }
 
-    if (createInfoFrame(frame, buf, ctrl_info_field)<=0) {
+    if (createInfoFrame(frame, buf, bufSize, ctrl_info_field)<=0) {
         printf("failed to create UA frame in Rx\n");
         return -1;
     }
 
-    frame_size = frameStuffer(frame, frame_size);
+    frame_size = frameStuffer(frame, frame_size);  // returns real size of frame
 
     (void)signal(SIGALRM, alarmHandler);
     error_count = 0;
     stateMachine.curr_global_stage = Waiting_RR;
     stateMachine.curr_state = state_start;
+    alarmEnabled = FALSE;
 
     while (error_count < connectionParameters.nRetransmissions) {
 
         if (alarmEnabled == FALSE) {
             alarm(connectionParameters.timeout);
             alarmEnabled = TRUE;
-
+            
             int bytes = sendFrame(frame, frame_size);;
             printf("%d bytes written\n", bytes);
         }
@@ -207,11 +210,9 @@ int llwrite(int id, unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(int fd, unsigned char* buffer)
+int llread(unsigned char* buffer)
 {
     stateMachine.curr_global_stage = Waiting_I;
-    stateMachine.curr_state = state_start;
-    stateMachine.counter = 0;
     int ctrl_rr_field;
     int Ns_received;
     unsigned char frame[SUPERVISION_SIZE];
@@ -219,6 +220,8 @@ int llread(int fd, unsigned char* buffer)
     //read the I frame
     do {
         readFrame();
+
+        printf("State after reading: %d", stateMachine.curr_global_stage);
 
         // NEEDS MORE CONDITIONS (not only for set, but for previous read check Ns probably)
         // Received a previous set
@@ -257,7 +260,7 @@ int llread(int fd, unsigned char* buffer)
 
     sendFrame(frame, SUPERVISION_SIZE);
     
-    memcpy(buffer, stateMachine.buf + 2, stateMachine.counter); //if correct, copies only the data part of the buffer
+    memcpy(buffer, stateMachine.buf + 2, stateMachine.counter-1); // if correct, copies only the data part of the buffer
     
     Ns = (Ns+1) % 2; // switch between 0 and 1
 
@@ -322,7 +325,7 @@ int createSupFrame(unsigned char *frame, unsigned char ctrl_field){
 
 }
 
-int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ctrl_field) {
+int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned int data_size, unsigned char ctrl_field) {
     
     frame[0] = FLAG;
     frame[1] = A_TRANS_COMM;
@@ -330,12 +333,13 @@ int createInfoFrame(unsigned char *frame, unsigned char * data, unsigned char ct
     frame[3] = A_TRANS_COMM ^ ctrl_field;
     frame[4] = data[0];
     char bcc2 = data[0];
-    for (int i = 1; i < DATA_SIZE_FRAME; i++) {
+    for (int i = 1; i < data_size; i++) {
         frame[4 + i] = data[i];
         bcc2 ^= data[i];
     }
-    frame[4+DATA_SIZE_FRAME] = bcc2;
-    frame[4+DATA_SIZE_FRAME+1]= FLAG;
+
+    frame[4+data_size] = bcc2;
+    frame[4+data_size+1]= FLAG;
 
     return 1;
 
@@ -356,8 +360,8 @@ int sendFrame(unsigned char * frame, int frame_size){
 
     // Just testing
     printf("Inside sendFrame\n");
-    for (int i = 0; i < SUPERVISION_SIZE; i++) {
-        printf("%x\n", frame[i]);
+    for (int i = 0; i < frame_size; i++) {
+        printf("%c", frame[i]);
     }
 
     return b;
@@ -366,7 +370,7 @@ int sendFrame(unsigned char * frame, int frame_size){
 int readFrame() {
     unsigned char buf[2] = {0}; // +1: Save space for the final '\0' char
     int rr = -1;  //if frame is approved, this saves the ns received
-
+    stateMachine.counter = 0;
     stateMachine.curr_state = state_start; //starts state machine
 
     while (stateMachine.curr_state != state_stop) {
@@ -378,12 +382,15 @@ int readFrame() {
             continue;
         }
         
+        
         printf("Init State: %d\n", stateMachine.curr_state);
         printf("Byte read: %x \n", buf[0]);
         fflush(stdout);
+        
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
         
         StateMachine_RunIteration(&stateMachine, buf[0]);
+        printf("After State : %d\n", stateMachine.curr_state);
     }
 
     return 1;
@@ -426,7 +433,7 @@ int frameStuffer(unsigned char *frame, int frame_size){
         }
     }
 
-    tempframe[frame_size+counter] = frame[frame_size];
+    tempframe[frame_size+counter-1] = frame[frame_size-1];
 
     memcpy(frame, tempframe, frame_size+counter);
 

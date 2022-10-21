@@ -31,7 +31,7 @@ typedef enum {
 typedef struct {
     stage curr_global_stage;            // Current global stage
     state_t curr_state;              // Individual frame reading state
-    unsigned char buf[BUF_SIZE];
+    unsigned char buf[MAX_BUF_SIZE];
     unsigned int counter;
 } stateMachine_t;
 
