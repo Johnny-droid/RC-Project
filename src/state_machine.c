@@ -53,7 +53,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
             break;
 
         case state_flag:
-            if (byte == A_REC_ANS) { stateMachine->curr_state = state_a; stateMachine->buf[0] = byte; }
+            if (byte == A_REC_ANS || A_TRANS_ANS) { stateMachine->curr_state = state_a; stateMachine->buf[0] = byte; }
             else if (byte == FLAG) { stateMachine->curr_state = state_flag; }
             else { stateMachine->curr_state = state_start; } 
             break;
@@ -142,11 +142,9 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
                     bcc2 ^= stateMachine->buf[2+i];
                 }
                 printf("Calculated bcc2: %x\nReceived bcc2:%x\n", bcc2, stateMachine->buf[2+stateMachine->counter-1]);
-                if (bcc2 == stateMachine->buf[2+stateMachine->counter-1]) { 
-                    stateMachine->curr_state = state_stop;
-                    stateMachine->curr_global_stage = Received_I;
-                }
-                else {stateMachine->curr_state = state_start;} 
+                if (bcc2 == stateMachine->buf[2+stateMachine->counter-1]) { stateMachine->curr_global_stage = Received_I;}
+                else { stateMachine->curr_global_stage = Received_I_Corrupted; } 
+                stateMachine->curr_state = state_stop;
             } else {
                 stateMachine->counter++; 
                 stateMachine->buf[1+stateMachine->counter] = byte;
@@ -176,8 +174,9 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
             break;
 
         case state_a:
-            if (byte == C_RR_0 || byte == C_RR_1) { stateMachine->curr_state = state_c; stateMachine->buf[1] = byte; } 
-            else if (byte == FLAG) {stateMachine->curr_state = state_flag; }
+            if (byte == C_RR_0 || byte == C_RR_1 || byte == C_REJ_0 || byte == C_REJ_1) { 
+                stateMachine->curr_state = state_c; stateMachine->buf[1] = byte; 
+            } else if (byte == FLAG) {stateMachine->curr_state = state_flag; }
             else { stateMachine->curr_state = state_start; }
             break;
 
@@ -210,7 +209,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
             break;
 
         case state_flag:
-            if (byte == A_TRANS_COMM) { stateMachine->curr_state = state_a; stateMachine->buf[0] = byte; }
+            if (byte == A_TRANS_COMM || byte == A_REC_COMM) { stateMachine->curr_state = state_a; stateMachine->buf[0] = byte; }
             else if (byte == FLAG) { stateMachine->curr_state = state_flag; }
             else { stateMachine->curr_state = state_start; } 
             break;

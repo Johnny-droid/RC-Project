@@ -12,8 +12,10 @@ typedef enum {
     Received_SET,
     Waiting_RR,
     Received_RR,
+    Received_REJ,
     Waiting_I,
     Received_I,
+    Received_I_Corrupted,
     Waiting_DISC,
     Received_DISC
 } stage;

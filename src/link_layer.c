@@ -183,9 +183,9 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
         
         readFrame();
 
-        if (stateMachine.buf[1] == C_RR_0) {
+        if (stateMachine.buf[1] == C_RR_0 || stateMachine.buf[1] == C_REJ_0) {
             Ns_received = 0;
-        } else if (stateMachine.buf[1] == C_RR_1) {
+        } else if (stateMachine.buf[1] == C_RR_1 || stateMachine.buf[1] == C_REJ_1) {
             Ns_received = 1;
         }
 
@@ -193,6 +193,9 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
             if (Ns != Ns_received) { // right Ns received
                 alarm(0);
                 alarmEnabled = FALSE;
+                if (stateMachine.buf[1] == C_REJ_0 || stateMachine.buf[1] == C_REJ_1) {
+                    continue;
+                }
                 break;
             } else {                // wrong Ns
                 error_count++;
@@ -213,7 +216,7 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
 int llread(unsigned char* buffer)
 {
     stateMachine.curr_global_stage = Waiting_I;
-    int ctrl_rr_field;
+    int ctrl_rr_field, ctrl_rej_field;
     int Ns_received;
     unsigned char frame[SUPERVISION_SIZE];
 
@@ -248,9 +251,18 @@ int llread(unsigned char* buffer)
         }
 
         // checks if the frame received is from the previous read (if so, resend the corresponding RR)
-        if(stateMachine.buf[1] == C_INFO_0){ Ns_received = 0; ctrl_rr_field = C_RR_1; } 
-        else if(stateMachine.buf[1] == C_INFO_1){ Ns_received = 1; ctrl_rr_field = C_RR_0; }
+        if(stateMachine.buf[1] == C_INFO_0){ Ns_received = 0; ctrl_rr_field = C_RR_1; ctrl_rej_field = C_REJ_1;} 
+        else if(stateMachine.buf[1] == C_INFO_1){ Ns_received = 1; ctrl_rr_field = C_RR_0; ctrl_rej_field = C_REJ_0;}
         
+        if (stateMachine.curr_global_stage == Received_I_Corrupted) {
+            if (createSupFrame(frame, ctrl_rej_field)<=0) {
+                printf("failed to create UA frame in Rx\n");
+                return -1;
+            }
+            sendFrame(frame, SUPERVISION_SIZE);
+            stateMachine.curr_global_stage = Waiting_I;
+        }
+
         if (Ns == Ns_received) {
             if (createSupFrame(frame, ctrl_rr_field)<=0) {
                 printf("failed to create UA frame in Rx\n");
@@ -291,6 +303,8 @@ int llclose(int showStatistics)
 
     if (connectionParameters.role == LlTx) {
         
+        printf("Inside llclose in tx\n");
+
         unsigned char frame[SUPERVISION_SIZE];
 
         if (createSupFrame(frame, C_DISC)<=0) {
@@ -307,13 +321,12 @@ int llclose(int showStatistics)
         while (error_count < connectionParameters.nRetransmissions) {
 
             if (alarmEnabled == FALSE) {
-                alarm(connectionParameters.timeout);
-                alarmEnabled = TRUE;
-
                 int bytes = sendFrame(frame, SUPERVISION_SIZE);
                 printf("%d bytes written\n", bytes);
+                alarm(connectionParameters.timeout);
+                alarmEnabled = TRUE;
+                
             }
-
             
             readFrame();
 
@@ -334,6 +347,8 @@ int llclose(int showStatistics)
 
 
     } else {
+        
+        printf("llclose inside rx\n");
 
         readFrame();
 
@@ -434,7 +449,7 @@ int sendFrame(unsigned char * frame, int frame_size){
     // Just testing
     printf("Inside sendFrame\n");
     for (int i = 0; i < frame_size; i++) {
-        printf("%c", frame[i]);
+        printf("%x", frame[i]);
     }
 
     return b;
