@@ -15,7 +15,7 @@
 #define MAX_PAYLOAD_SIZE 64
 
 
-#define MAX_BUF_SIZE 100
+#define MAX_BUF_SIZE 200
 
 #define DATA_SIZE_FRAME 64
 

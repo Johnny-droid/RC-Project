@@ -136,7 +136,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
         case state_data:
             if (byte == ESC) { stateMachine->curr_state = state_esc; }
             else if (byte == FLAG) {
-                printf("End of data part\n");
+                //printf("End of data part\n");
                 int bcc2 = stateMachine->buf[2];
                 for (int i = 1; i < stateMachine->counter-1; i++) {
                     bcc2 ^= stateMachine->buf[2+i];

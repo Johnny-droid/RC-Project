@@ -224,7 +224,7 @@ int llread(unsigned char* buffer)
     do {
         readFrame();
 
-        printf("State after reading: %d", stateMachine.curr_global_stage);
+        printf("State after reading: %d\n", stateMachine.curr_global_stage);
 
         // NEEDS MORE CONDITIONS (not only for set, but for previous read check Ns probably)
         // Received a previous set
@@ -447,10 +447,11 @@ int sendFrame(unsigned char * frame, int frame_size){
     }
 
     // Just testing
-    printf("Inside sendFrame\n");
+    printf("Inside sendFrame: ");
     for (int i = 0; i < frame_size; i++) {
         printf("%x", frame[i]);
     }
+    printf("\n");
 
     return b;
 }
@@ -469,15 +470,15 @@ int readFrame() {
             continue;
         }
         
-        
+        /*
         printf("Init State: %d\n", stateMachine.curr_state);
         printf("Byte read: %x \n", buf[0]);
         fflush(stdout);
-        
+        */
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
         
         StateMachine_RunIteration(&stateMachine, buf[0]);
-        printf("After State : %d\n", stateMachine.curr_state);
+        //printf("After State : %d\n", stateMachine.curr_state);
     }
 
     return 1;
