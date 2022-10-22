@@ -275,7 +275,7 @@ int llread(unsigned char* buffer)
     } while (stateMachine.curr_global_stage != Received_I);
 
     if (stateMachine.curr_global_stage == Waiting_UA) {
-        return 1;
+        return -1;
     }
 
     printf("Received Info frame\n");
@@ -292,7 +292,7 @@ int llread(unsigned char* buffer)
     
     Ns = (Ns+1) % 2; // switch between 0 and 1
 
-    return 0;
+    return stateMachine.counter-1;
 }
 
 ////////////////////////////////////////////////

@@ -11,7 +11,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     unsigned char* message = "Hello world of RC! This is a new era of life!"
     " I'll never turn to the dark side. You've failed, your highness. I am a Jedi, like my father before me."
     " You can't stop the change, any more than you can stop the suns from setting."
-    " ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ Banana!";
+    " ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ Bananaaaaaa!";
     unsigned int message_size = strlen((char*) message);
 
     LinkLayerRole link_role; 
@@ -56,21 +56,70 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         llopen(link_layer);
         
         unsigned char message_received[DATA_SIZE_FRAME+1];
-        int finished = FALSE;
+        int size_read = 0;
 
-        while (!finished) {
+        while (size_read >= 0) {
             printf("\n%s\n", message_received);
-            finished = llread(message_received);
-            message_received[DATA_SIZE_FRAME] = '\0';
-            
+            size_read = llread(message_received);
+            message_received[size_read] = '\0';
         }
         
         llclose(1);
 
+        unsigned char packet[DATA_SIZE_FRAME];
+        for (int i = 0; i < DATA_SIZE_FRAME; i++) packet[i] = 0;
+        packControl(packet, 2, 258, "pingu");
     }
+
+}
+
+
+
+int packControl(unsigned char* packet, unsigned int ctrl, unsigned int file_size, const char* filename) {
+
+    if (ctrl == 2) { packet[0] = AL_C_START; }
+    else if (ctrl == 3) { packet[0] = AL_C_END; }   
+    else { return -1; }
+
+    packet[1] = AL_TYPE_FILE_SIZE;
+    packet[2] = sizeof(unsigned int);
+    memcpy(packet+3, &file_size, sizeof(unsigned int));
     
-    
+    packet[3+sizeof(unsigned int)] = AL_TYPE_FILE_NAME;
+    packet[4+sizeof(unsigned int)] = strlen(filename);
+    strncpy((char*) (packet + 5+sizeof(unsigned int)), filename, strlen(filename));  
+
+    unsigned int packet_size = 5 + sizeof(unsigned int) + strlen(filename);
+
+    printf("Packet size: %d \nPacket: ", packet_size);
+    for (int i = 0; i < packet_size; i++) {
+        printf("%x ", packet[i]);
+    }
+
+    printf("\nLast element should be: %x\n",  packet[packet_size-1]);
+
+    return packet_size;
+
+}
+
+int packData(unsigned char* packet, unsigned char* data, unsigned int n) {
+
+}
 
 
+int unpack(unsigned char* packet, unsigned char* received, unsigned int* file_size) {
 
+    if (packet[0] == AL_C_DATA) {
+        // TO DO
+
+
+    } else if (packet[0] == AL_C_START || packet[0] == AL_C_END) {
+        // TO DO
+
+        
+    } else {
+        return -1;
+    }
+
+    return packet[0];
 }

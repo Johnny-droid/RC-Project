@@ -21,4 +21,8 @@
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename);
 
+int packControl(unsigned char* packet, unsigned int ctrl, unsigned int file_size, const char* filename);
+int packData(unsigned char* packet, unsigned char* data, unsigned int n);
+int unpack(unsigned char* packet, unsigned char* received, unsigned int* file_size);
+
 #endif // _APPLICATION_LAYER_H_
