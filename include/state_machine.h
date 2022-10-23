@@ -12,8 +12,12 @@ typedef enum {
     Received_SET,
     Waiting_RR,
     Received_RR,
+    Received_REJ,
     Waiting_I,
-    Received_I
+    Received_I,
+    Received_I_Corrupted,
+    Waiting_DISC,
+    Received_DISC
 } stage;
 
 typedef enum {
@@ -22,13 +26,17 @@ typedef enum {
     state_a,
     state_c,
     state_bcc,
+    state_esc,
+    state_data,
+    state_bcc2,
     state_stop
 } state_t;
 
-typedef struct{
+typedef struct {
     stage curr_global_stage;            // Current global stage
     state_t curr_state;              // Individual frame reading state
-    unsigned char buf[BUF_SIZE];
+    unsigned char buf[MAX_BUF_SIZE];
+    unsigned int counter;
 } stateMachine_t;
 
 void StateMachine_RunIteration (stateMachine_t * stateMachine, unsigned char byte);

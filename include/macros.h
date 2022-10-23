@@ -9,10 +9,19 @@
 #define FALSE 0
 #define TRUE 1
 
-#define BUF_SIZE 256
 
-#define DATA_SIZE_FRAME 8       //? why 8?
-#define INFOBUFFERSIZE  20   //info frame can have 6+bufsize, but it needs to support stuffing, so it needs to be bigger, but i cant think of a solution, so itll have to be a placeholder thanks bye 
+// SIZE of maximum acceptable payload.
+// Maximum number of bytes that application layer should send to link layer
+#define MAX_PAYLOAD_SIZE 128
+
+
+#define MAX_BUF_SIZE 700
+
+#define DATA_SIZE_FRAME 128
+
+#define AL_DATA_SIZE (DATA_SIZE_FRAME-4)
+
+#define SUPERVISION_SIZE 5
 
 #define FLAG 0x7E
 #define ESC 0x7D
@@ -31,7 +40,12 @@
 #define C_INFO_0 0x00  // Information N(0)
 #define C_INFO_1 0x50  // Information N(1)
 
-
+// Application layer macros
+#define AL_C_DATA 1
+#define AL_C_START 2
+#define AL_C_END 3
+#define AL_TYPE_FILE_SIZE 0
+#define AL_TYPE_FILE_NAME 1
 
 
 #endif

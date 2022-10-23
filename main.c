@@ -8,7 +8,7 @@
 
 
 #define N_TRIES 3
-#define TIMEOUT 4
+#define TIMEOUT 2
 
 // Arguments:
 //   $1: /dev/ttySxx
