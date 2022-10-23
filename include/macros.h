@@ -12,12 +12,14 @@
 
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
-#define MAX_PAYLOAD_SIZE 256
+#define MAX_PAYLOAD_SIZE 128
 
 
 #define MAX_BUF_SIZE 700
 
-#define DATA_SIZE_FRAME 256
+#define DATA_SIZE_FRAME 128
+
+#define AL_DATA_SIZE (DATA_SIZE_FRAME-4)
 
 #define SUPERVISION_SIZE 5
 
