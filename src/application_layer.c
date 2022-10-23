@@ -21,51 +21,69 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     link_layer.timeout = timeout;
 
     if (strcmp((char*) role, "tx") == 0) {
+
         
         printf("Full message: %s", message);
+        unsigned char buf[AL_DATA_SIZE];
         unsigned char chunck[DATA_SIZE_FRAME];
-        unsigned int message_size_sent = 0;
+        unsigned int file_size, file_size_sent = 0;
+        //unsigned int message_size_sent = 0;
         unsigned int sequence_number = 0;
         int chunck_size;
         link_role = LlTx;
         link_layer.role = link_role;
+
+        // Open file, get the size, and make sure it points back to the begining
+        FILE* fp = fopen(filename, "r");
+        if (fp == NULL) {
+            printf("File Not Found!\n");
+            return;
+        }
+        fseek(fp, 0L, SEEK_END);
+        file_size = ftell(fp);
+        fseek(fp, 0L, SEEK_SET);
+
         strcpy(link_layer.serialPort, "/dev/ttyS10");
-        llopen(link_layer);
+        
+        if (llopen(link_layer) < 0) return;
 
         // Send the Start Control Packet 
-        if ((chunck_size = packControl(chunck, AL_C_START, message_size, "pingu")) < 0) {
+        if ((chunck_size = packControl(chunck, AL_C_START, file_size, "pingu")) < 0) {
             printf("Could not pack control start in aplication layer\n");
             return;
         }
 
-        llwrite(chunck, chunck_size);
+        if (llwrite(chunck, chunck_size) < 0) return;
 
         // Send the Data Packets with data of size AL_DATA_SIZE
-        while (message_size_sent + AL_DATA_SIZE < message_size) {
-            if ((chunck_size = packData(chunck, message + message_size_sent, AL_DATA_SIZE, sequence_number)) < 0) {
+        while (file_size_sent + AL_DATA_SIZE < file_size) {
+            fread(buf, sizeof(buf), 1, fp);
+            if ((chunck_size = packData(chunck, buf, AL_DATA_SIZE, sequence_number)) < 0) {
                 printf("Problem while packing data in application layer\n");
                 return;
             }
-            llwrite(chunck, chunck_size);
-            message_size_sent += AL_DATA_SIZE;
+            if (llwrite(chunck, chunck_size) < 0) return;
+            file_size_sent += AL_DATA_SIZE;
             sequence_number = (sequence_number+1) % 256;
             printf("Sent by cicle llwrite\n");
         }
         
         // Send the last Data Packet with the remaining data left
-        if ((chunck_size = packData(chunck, message + message_size_sent, message_size-message_size_sent, sequence_number)) < 0) {
+        if ((chunck_size = packData(chunck, buf, file_size-file_size_sent, sequence_number)) < 0) {
             printf("Problem while packing data in application layer\n");
             return;
         }
-        llwrite(chunck, chunck_size);
+        if (llwrite(chunck, chunck_size) < 0) return;
 
         // Send the End Control Packet
-        if ((chunck_size = packControl(chunck, AL_C_END, message_size, "pingu")) < 0) {
+        if ((chunck_size = packControl(chunck, AL_C_END, file_size, "pingu")) < 0) {
             printf("Could not pack control end in aplication layer\n");
         }
         llwrite(chunck, chunck_size);
 
         llclose(1);
+
+        fclose(fp);
 
         
     } else {
@@ -79,6 +97,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         unsigned int received_size;
         unsigned int file_size;
         int type, packet_size = 0;
+        
+        packet_size = llread(packet_received);
+        type = unpack(packet_received, received, &received_size, &file_size);
+
+        if (type != AL_C_START) return;
+        FILE* fp = fopen("pingu.gif", "w");
+        if (fp == NULL) {
+            printf("File Not Found!\n");
+            return;
+        };
+        
 
         while (TRUE) {
             
@@ -91,12 +120,18 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 return;
             }
 
+            if (type == AL_C_DATA) {
+                fwrite(received, 1, received_size, fp);
+            }
+
             received[received_size] = '\0'; // just a trick to print the string
             printf("\nReceived: %s\n", received);
         }
+
         
         llclose(1);
 
+        fclose(fp);
         /*
         unsigned char packet[DATA_SIZE_FRAME];
         for (int i = 0; i < DATA_SIZE_FRAME; i++) packet[i] = 0;

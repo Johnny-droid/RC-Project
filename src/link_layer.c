@@ -84,7 +84,12 @@ int llopen(LinkLayer newConnectionParameters)
         (void)signal(SIGALRM, alarmHandler);
         error_count = 0;
 
-        while (error_count < connectionParameters.nRetransmissions) {
+        while (TRUE) {
+
+            if (error_count == connectionParameters.nRetransmissions) {
+                printf("Number of tries reached!\n");
+                return -1;
+            }
 
             if (alarmEnabled == FALSE) {
                 alarm(connectionParameters.timeout);
@@ -170,7 +175,12 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
     stateMachine.curr_state = state_start;
     alarmEnabled = FALSE;
 
-    while (error_count < connectionParameters.nRetransmissions) {
+    while (TRUE) {
+
+        if (error_count == connectionParameters.nRetransmissions) {
+            printf("Number of tries reached!\n");
+            return -1;
+        }
 
         if (alarmEnabled == FALSE) {
             alarm(connectionParameters.timeout);
@@ -204,6 +214,7 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
             }
         }
     }
+
 
     Ns = (Ns+1) % 2; // switch between 0 and 1
 
