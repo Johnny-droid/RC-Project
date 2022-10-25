@@ -20,6 +20,12 @@ int llopen(LinkLayer newConnectionParameters)
     connectionParameters = newConnectionParameters;
     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
     
+    printf("Reached llopen\n");
+    printf("Serial Port: %s\n", connectionParameters.serialPort);
+    printf("File descriptor: %d", fd);    
+    fflush(stdout);
+    
+
     if (fd < 0)
     {
         perror(connectionParameters.serialPort);
@@ -34,6 +40,7 @@ int llopen(LinkLayer newConnectionParameters)
         perror("tcgetattr");
         exit(-1);
     }
+    
 
     // Clear struct for new port settings
     memset(&newtio, 0, sizeof(newtio));
@@ -44,7 +51,7 @@ int llopen(LinkLayer newConnectionParameters)
 
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 5; // Inter-character timer unused
+    newtio.c_cc[VTIME] = newConnectionParameters.timeout; // Inter-character timer unused
     newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
@@ -86,7 +93,7 @@ int llopen(LinkLayer newConnectionParameters)
 
         while (TRUE) {
 
-            if (error_count == connectionParameters.nRetransmissions) {
+            if (error_count > connectionParameters.nRetransmissions) {
                 printf("Number of tries reached!\n");
                 return -1;
             }
@@ -96,6 +103,7 @@ int llopen(LinkLayer newConnectionParameters)
                 alarmEnabled = TRUE;
 
                 int bytes = sendFrame(frame, SUPERVISION_SIZE);
+                stateMachine.curr_global_stage = Waiting_UA;
                 printf("%d bytes written\n", bytes);
             }
 
@@ -139,8 +147,6 @@ int llopen(LinkLayer newConnectionParameters)
         sendFrame(frame, SUPERVISION_SIZE);
 
         Ns = 1;
-
-        printf("\n\n\nReached end of llopen!!!!!!\n\n\n");
         
         return 0;
     }
@@ -162,6 +168,8 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
     if (Ns == 0) {ctrl_info_field = C_INFO_0; } 
     else { ctrl_info_field = C_INFO_1; }
 
+    
+    
     if (createInfoFrame(frame, buf, bufSize, ctrl_info_field)<=0) {
         printf("failed to create UA frame in Rx\n");
         return -1;
@@ -177,7 +185,7 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
 
     while (TRUE) {
 
-        if (error_count == connectionParameters.nRetransmissions) {
+        if (error_count > connectionParameters.nRetransmissions) {
             printf("Number of tries reached!\n");
             return -1;
         }
@@ -186,20 +194,33 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
             alarm(connectionParameters.timeout);
             alarmEnabled = TRUE;
             
-            int bytes = sendFrame(frame, frame_size);;
-            printf("%d bytes written\n", bytes);
+            //printf("Ns sent: %d\n",Ns);
+            
+            sendFrame(frame, frame_size);
+            stateMachine.curr_global_stage = Waiting_RR;
+            //printf("%d bytes written\n", bytes);
         }
 
         
+        //printf("before read\n");
         readFrame();
+        // printf("after read\n");
 
-        if (stateMachine.buf[1] == C_RR_0 || stateMachine.buf[1] == C_REJ_0) {
-            Ns_received = 0;
-        } else if (stateMachine.buf[1] == C_RR_1 || stateMachine.buf[1] == C_REJ_1) {
-            Ns_received = 1;
-        }
+        
+        
+        
+
 
         if (stateMachine.curr_global_stage == Received_RR) {
+        
+            if (stateMachine.buf[1] == C_RR_0 || stateMachine.buf[1] == C_REJ_0) {
+                Ns_received = 0;
+            } else if (stateMachine.buf[1] == C_RR_1 || stateMachine.buf[1] == C_REJ_1) {
+                Ns_received = 1;
+            }
+            
+            //printf("Ns received: %d\n",Ns_received);
+            
             if (Ns != Ns_received) { // right Ns received
                 alarm(0);
                 alarmEnabled = FALSE;
@@ -235,7 +256,7 @@ int llread(unsigned char* buffer)
     do {
         readFrame();
 
-        printf("State after reading: %d\n", stateMachine.curr_global_stage);
+        //printf("State after reading: %d\n", stateMachine.curr_global_stage);
 
         // NEEDS MORE CONDITIONS (not only for set, but for previous read check Ns probably)
         // Received a previous set
@@ -289,7 +310,7 @@ int llread(unsigned char* buffer)
         return -1;
     }
 
-    printf("Received Info frame\n");
+    //printf("Received Info frame\n");
 
     //send RR
     if (createSupFrame(frame, ctrl_rr_field)<=0) {
@@ -314,7 +335,7 @@ int llclose(int showStatistics)
 
     if (connectionParameters.role == LlTx) {
         
-        printf("Inside llclose in tx\n");
+        // printf("Inside llclose in tx\n");
 
         unsigned char frame[SUPERVISION_SIZE];
 
@@ -332,10 +353,11 @@ int llclose(int showStatistics)
         while (error_count < connectionParameters.nRetransmissions) {
 
             if (alarmEnabled == FALSE) {
-                int bytes = sendFrame(frame, SUPERVISION_SIZE);
-                printf("%d bytes written\n", bytes);
                 alarm(connectionParameters.timeout);
                 alarmEnabled = TRUE;
+                int bytes = sendFrame(frame, SUPERVISION_SIZE);
+                stateMachine.curr_global_stage = Waiting_DISC;
+                printf("%d bytes written\n", bytes);
                 
             }
             
@@ -359,7 +381,7 @@ int llclose(int showStatistics)
 
     } else {
         
-        printf("llclose inside rx\n");
+        //printf("llclose inside rx\n");
 
         readFrame();
 
@@ -458,11 +480,13 @@ int sendFrame(unsigned char * frame, int frame_size){
     }
 
     // Just testing
+    /*
     printf("Inside sendFrame: ");
     for (int i = 0; i < frame_size; i++) {
         printf("%x", frame[i]);
     }
     printf("\n");
+    */
 
     return b;
 }
@@ -486,7 +510,7 @@ int readFrame() {
         printf("Byte read: %x \n", buf[0]);
         fflush(stdout);
         */
-        buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
+        //buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
         
         StateMachine_RunIteration(&stateMachine, buf[0]);
         //printf("After State : %d\n", stateMachine.curr_state);
@@ -539,25 +563,4 @@ int frameStuffer(unsigned char *frame, int frame_size){
     return frame_size+counter;
 }
 
-/*
-void frameDeStuffer(unsigned char *frame, int frame_size){
-    unsigned char tempframe[frameSize];
-    int counter = 0;
-    
-    for (int i = 0; i < frameSize; i++) {
-        if(frame[i+counter]==FLAG && frame[i+counter+1]==FLAG^TRANSPARENCY){
-            tempframe[i]=FLAG;
-            counter++;
-        }else if(frame[i+counter]==ESC && frame[i+counter+1]==FLAG^TRANSPARENCY){
-            tempframe[i]=ESC;
-            counter++;
-        }else{
-            tempframe[i]=frame[i+counter];
-        }
 
-    }
-
-    frame=tempframe;
-
-}
-*/
