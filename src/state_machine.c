@@ -141,7 +141,7 @@ void StateMachine_RunIteration(stateMachine_t * stateMachine, unsigned char byte
                 for (int i = 1; i < stateMachine->counter-1; i++) {
                     bcc2 ^= stateMachine->buf[2+i];
                 }
-                printf("Calculated bcc2: %x\nReceived bcc2:%x\n", bcc2, stateMachine->buf[2+stateMachine->counter-1]);
+                //printf("Calculated bcc2: %x\nReceived bcc2:%x\n", bcc2, stateMachine->buf[2+stateMachine->counter-1]);
                 if (bcc2 == stateMachine->buf[2+stateMachine->counter-1]) { stateMachine->curr_global_stage = Received_I;}
                 else { stateMachine->curr_global_stage = Received_I_Corrupted; } 
                 stateMachine->curr_state = state_stop;

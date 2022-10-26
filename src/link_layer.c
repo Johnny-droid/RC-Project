@@ -20,11 +20,6 @@ int llopen(LinkLayer newConnectionParameters)
     connectionParameters = newConnectionParameters;
     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
     
-    printf("Reached llopen\n");
-    printf("Serial Port: %s\n", connectionParameters.serialPort);
-    printf("File descriptor: %d", fd);    
-    fflush(stdout);
-    
 
     if (fd < 0)
     {
@@ -66,7 +61,6 @@ int llopen(LinkLayer newConnectionParameters)
         exit(-1);
     }
 
-    printf("New termios structure set\n");
 
     if(fd<=0){
         printf("failed open serialport in llopen\n");
@@ -102,9 +96,8 @@ int llopen(LinkLayer newConnectionParameters)
                 alarm(connectionParameters.timeout);
                 alarmEnabled = TRUE;
 
-                int bytes = sendFrame(frame, SUPERVISION_SIZE);
+                sendFrame(frame, SUPERVISION_SIZE);
                 stateMachine.curr_global_stage = Waiting_UA;
-                printf("%d bytes written\n", bytes);
             }
 
             
@@ -115,14 +108,9 @@ int llopen(LinkLayer newConnectionParameters)
                 break;
             }
             
-        } 
-
-        //Just testing
-        if (stateMachine.curr_global_stage == Received_UA) {
-            printf("\nReceived UA nicely\n");
-        } else {
-            printf("\nTimeout\n");
         }
+
+  
         
         Ns = 0;
        return 0;
@@ -355,9 +343,8 @@ int llclose(int showStatistics)
             if (alarmEnabled == FALSE) {
                 alarm(connectionParameters.timeout);
                 alarmEnabled = TRUE;
-                int bytes = sendFrame(frame, SUPERVISION_SIZE);
+                sendFrame(frame, SUPERVISION_SIZE);
                 stateMachine.curr_global_stage = Waiting_DISC;
-                printf("%d bytes written\n", bytes);
                 
             }
             
@@ -370,12 +357,12 @@ int llclose(int showStatistics)
                     printf("failed to create DISC frame in Tx\n");
                     return -1;
                 }
-                int bytes = sendFrame(frame, SUPERVISION_SIZE);
-                printf("%d bytes written\n", bytes);
+                sendFrame(frame, SUPERVISION_SIZE);
                 break;
             }
             
         } 
+        printf("Connection closed successfully\n");
 
 
 
@@ -500,7 +487,7 @@ int readFrame() {
         int bytes = read(fd, buf, 1); 
 
         if (bytes == 0) {
-            printf("Didn't read anything \n");
+            printf(".");
             fflush(stdout);
             continue;
         }
