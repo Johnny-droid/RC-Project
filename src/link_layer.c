@@ -190,13 +190,7 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
         }
 
         
-        //printf("before read\n");
         readFrame();
-        // printf("after read\n");
-
-        
-        
-        
 
 
         if (stateMachine.curr_global_stage == Received_RR) {
@@ -207,12 +201,12 @@ int llwrite(unsigned char *buf, unsigned int bufSize)
                 Ns_received = 1;
             }
             
-            //printf("Ns received: %d\n",Ns_received);
             
             if (Ns != Ns_received) { // right Ns received
                 alarm(0);
                 alarmEnabled = FALSE;
                 if (stateMachine.buf[1] == C_REJ_0 || stateMachine.buf[1] == C_REJ_1) {
+                    stateMachine.curr_global_stage = Waiting_RR;
                     continue;
                 }
                 break;

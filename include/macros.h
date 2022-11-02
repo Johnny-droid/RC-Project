@@ -3,7 +3,7 @@
 
 // Baudrate settings are defined in <asm/termbits.h>, which is
 // included by <termios.h>
-#define BAUDRATE B38400
+#define BAUDRATE B4800
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
 #define FALSE 0
@@ -12,12 +12,10 @@
 
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
-#define MAX_PAYLOAD_SIZE 256
+#define MAX_PAYLOAD_SIZE 1000
+#define DATA_SIZE_FRAME 1000
 
-
-#define MAX_BUF_SIZE 1000
-
-#define DATA_SIZE_FRAME 256
+#define MAX_BUF_SIZE 2000
 
 #define AL_DATA_SIZE (DATA_SIZE_FRAME-4)
 

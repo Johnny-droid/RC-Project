@@ -49,6 +49,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
         strcat(filename_sent,filename);
         
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
+
         if (llopen(link_layer) < 0) return;
 
         
@@ -57,6 +60,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             printf("Could not pack control start in aplication layer\n");
             return;
         }
+
+        
+
+
         if (llwrite(chunck, chunck_size) < 0) return;
         
 
@@ -89,8 +96,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         }
         llwrite(chunck, chunck_size);
 
-        llclose(1);
+        
 
+        llclose(1);
+        
+        gettimeofday(&end, NULL);
+        
+        long seconds = (end.tv_sec - start.tv_sec);
+        long micros = (((seconds * 1000000) + end.tv_usec) - (start.tv_usec)) / 1000;
+    
+        printf("The elapsed time is %ld miliseconds\n", micros);
+        
         fclose(fp);
 
         
